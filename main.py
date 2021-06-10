@@ -10,13 +10,209 @@ from kivy.core.audio import SoundLoader
 
 from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
+from kivy.uix.widget import Widget
+from kivy.graphics import Rectangle, Color, Line, Ellipse
 
 from kivymd.uix.toolbar import MDToolbar
 from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
-from kivymd.uix.button import MDRoundFlatIconButton
 from kivymd.uix.label import MDLabel
+
+
+class CircleWidget(Widget):
+    def __init__(self, **kwargs):
+        super(CircleWidget, self).__init__(**kwargs)
+
+        self.pointer_position_code = '9'
+
+        with self.canvas:
+            Color(169, 0, 0, 1.0)
+            self.circle = Ellipse(
+                pos=self.center,
+                size=(self.width * 0.05, self.height * 0.05)
+            )
+
+        self.bind(pos=self.update_circle, size=self.update_circle)
+
+    def calculate_coordinates(self, code=None):
+        center_x, center_y = self.center
+        x = self.width / 2
+        y = self.height / 2
+        part_x = x * 0.66
+        part_y = y * 0.66
+
+        offset = min(self.width * 0.05, self.height * 0.05)
+
+        if self.pointer_position_code is None:
+            return center_x - offset, center_y - offset
+        elif self.pointer_position_code == '9':
+            return center_x - offset, center_y - offset
+        elif self.pointer_position_code == '1':
+            return center_x + x - offset, center_y + y - offset
+        elif self.pointer_position_code == '2':
+            return center_x - x - offset, center_y + y - offset
+        elif self.pointer_position_code == '3':
+            return center_x + x - offset, center_y - y - offset
+        elif self.pointer_position_code == '4':
+            return center_x - x - offset, center_y - y - offset
+        elif self.pointer_position_code == '5':
+            return center_x + x - offset, center_y - offset
+        elif self.pointer_position_code == '6':
+            return center_x - x - offset, center_y - offset
+        elif self.pointer_position_code == '7':
+            return center_x - offset, center_y + y - offset
+        elif self.pointer_position_code == '8':
+            return center_x - offset, center_y - y - offset
+        elif self.pointer_position_code == '1t':
+            return center_x + part_x - offset, center_y + part_y - offset
+        elif self.pointer_position_code == '2t':
+            return center_x - part_x - offset, center_y + part_y - offset
+        elif self.pointer_position_code == '3t':
+            return center_x + part_x - offset, center_y - part_y - offset
+        elif self.pointer_position_code == '4t':
+            return center_x - part_x - offset, center_y - part_y - offset
+        elif self.pointer_position_code == '5t':
+            return center_x + part_x - offset, center_y - offset
+        elif self.pointer_position_code == '6t':
+            return center_x - part_x - offset, center_y - offset
+        elif self.pointer_position_code == '7t':
+            return center_x - offset, center_y + part_y - offset
+        elif self.pointer_position_code == '8t':
+            return center_x - offset, center_y - part_y - offset
+
+    def update_circle(self, *args):
+        offset = min(self.width * 0.05, self.height * 0.05)
+        self.circle.pos = self.calculate_coordinates(code=self.pointer_position_code)
+
+        if self.pointer_position_code is None:
+            self.circle.size = (0, 0)
+        else:
+            self.circle.size = (offset * 2, offset * 2)
+
+
+class RectangleWidget(Widget):
+    def __init__(self, **kwargs):
+        super(RectangleWidget, self).__init__(**kwargs)
+
+        self.pointer_position_code = '9'
+
+        with self.canvas:
+            Color(0, 0, 0, 0.33)
+            self.rect1 = Rectangle(
+                pos=self.center,
+                size=(-self.width / 2., self.height / 2.)
+            )
+
+            Color(0, 0, 0, 0.1)
+            self.rect2 = Rectangle(
+                pos=self.center,
+                size=(self.width / 2., self.height / 2.)
+            )
+
+            Color(0, 0, 0, 0.1)
+            self.rect3 = Rectangle(
+                pos=self.center,
+                size=(-self.width / 2., -self.height / 2.)
+            )
+
+            Color(0, 0, 0, 0.33)
+            self.rect4 = Rectangle(
+                pos=self.center,
+                size=(self.width / 2., -self.height / 2.)
+            )
+
+            self.line_1_4_color = Color(0, 0, 0, 0.5)
+            self.line_1_4 = Line(
+                points=[0, self.height, self.width, 0],
+                width=2
+            )
+            self.line_2_3_color = Color(0, 0, 0, 0.5)
+            self.line_2_3 = Line(
+                points=[0, self.height, self.width, 0],
+                width=2
+            )
+            self.line_5_6_color = Color(0, 0, 0, 0.5)
+            self.line_5_6 = Line(
+                points=[self.width, self.height / 2, 0, self.height / 2],
+                width=2
+            )
+            self.line_7_8_color = Color(0, 0, 0, 0.5)
+            self.line_7_8 = Line(
+                points=[self.width / 2, self.height, self.width / 2, 0],
+                width=2
+            )
+
+        self.bind(pos=self.update_rect, size=self.update_rect)
+        self.bind(pos=self.update_lines, size=self.update_lines)
+
+    def update_rect(self, *args):
+        self.rect1.pos = self.center
+        self.rect1.size = (-self.width / 2., self.height / 2.)
+
+        self.rect2.pos = self.center
+        self.rect2.size = (self.width / 2., self.height / 2.)
+
+        self.rect3.pos = self.center
+        self.rect3.size = (-self.width / 2., -self.height / 2.)
+
+        self.rect4.pos = self.center
+        self.rect4.size = (self.width / 2., -self.height / 2.)
+
+        self.line_1_4.points = [
+            self.center[0] + (self.width / 2),
+            self.center[1] + (self.height / 2),
+            self.center[0] - (self.width / 2),
+            self.center[1] - (self.height / 2)
+        ]
+
+        self.line_2_3.points = [
+            self.center[0] - (self.width / 2),
+            self.center[1] + (self.height / 2),
+            self.center[0] + (self.width / 2),
+            self.center[1] - (self.height / 2)
+        ]
+
+        self.line_5_6.points = [
+            self.center[0] + (self.width / 2),
+            self.center[1],
+            self.center[0] - (self.width / 2),
+            self.center[1]
+        ]
+
+        self.line_7_8.points = [
+            self.center[0],
+            self.center[1] + (self.height / 2),
+            self.center[0],
+            self.center[1] - (self.height / 2)
+        ]
+
+    def update_lines(self, *args):
+        self.line_1_4_color.rgba = (0, 0, 0, 1.0)
+        self.line_2_3_color.rgba = (0, 0, 0, 1.0)
+        self.line_5_6_color.rgba = (0, 0, 0, 1.0)
+        self.line_7_8_color.rgba = (0, 0, 0, 1.0)
+
+        self.line_1_4.width = 2
+        self.line_2_3.width = 2
+        self.line_5_6.width = 2
+        self.line_7_8.width = 2
+
+        if self.pointer_position_code in ('1', '4'):
+            self.line_1_4_color.rgba = (169, 0, 0, 1.0)
+            self.line_1_4.width = 5
+        elif self.pointer_position_code in ('2', '3'):
+            self.line_2_3_color.rgba = (169, 0, 0, 1.0)
+            self.line_2_3.width = 5
+        elif self.pointer_position_code in ('5', '6'):
+            self.line_5_6_color.rgba = (169, 0, 0, 0.5)
+            self.line_5_6.width = 5
+        elif self.pointer_position_code in ('7', '8'):
+            self.line_7_8_color.rgba = (169, 0, 0, 1.0)
+            self.line_7_8.width = 5
+        else:
+            pass
 
 
 class HistoricalFencingDrillsApp(MDApp):
@@ -58,7 +254,8 @@ class HistoricalFencingDrillsApp(MDApp):
         bottom_navigation_item2 = MDBottomNavigationItem(
             name='screen 2',
             text='Drills',
-            icon='sword'
+            icon='sword',
+            on_tab_press=self.schedule_calls
         )
         bottom_navigation_item3 = MDBottomNavigationItem(
             name='screen 3',
@@ -106,12 +303,16 @@ class HistoricalFencingDrillsApp(MDApp):
         return patterns
 
     def _update_screen2(self, row, nap):
-        _, time_text, call_text, full_call_text, play_sound = row
+        _, call_length, time_text, call_text, full_call_text, play_sound = row
         self.time_label.text = time_text
         self.call_label.text = call_text
         self.full_call_label.text = full_call_text
 
         if play_sound:
+            self.call_diagram.pointer_position_code = call_text
+            self.call_diagram.update_lines()
+            self.call_pointer.pointer_position_code = call_text
+            self.call_pointer.update_circle()
             play_sound.play()
 
     def _create_buffer(self):
@@ -134,13 +335,13 @@ class HistoricalFencingDrillsApp(MDApp):
         while i < (total_time + 10):
             if i < 10:
 
-                row = (i, f'Time: {self.total_time_widget.text}', str(10 - i), '', None)
+                row = (i, None, self.total_time_widget.text, 'READY', str(10 - i), None)
                 buffer.append(row)
                 time_left -= 1
                 i += 1
             elif i == 10:
                 time_string = clock_time_from_seconds(round(time_left))
-                row = (i, f'Time: {time_string}', 'BEGIN', '', None)
+                row = (i, None, time_string, 'BEGIN', '', None)
                 buffer.append(row)
                 time_left -= 1
                 i += 1
@@ -158,7 +359,7 @@ class HistoricalFencingDrillsApp(MDApp):
                         call_length = call_sound.length + call_wait
 
                         time_string = clock_time_from_seconds(math.floor(time_left))
-                        row = (i, f'Time: {time_string}', call_text, call_list, call_sound)
+                        row = (i, call_length, time_string, call_text, call_list, call_sound)
                         buffer.append(row)
 
                         i += call_length
@@ -180,7 +381,7 @@ class HistoricalFencingDrillsApp(MDApp):
                         call_length = call_sound.length + call_wait
 
                         time_string = clock_time_from_seconds(math.floor(time_left))
-                        row = (i, f'Time: {time_string}', call_text, call_list, call_sound)
+                        row = (i, call_length, time_string, call_text, call_list, call_sound)
                         buffer.append(row)
 
                         i += call_length
@@ -204,7 +405,7 @@ class HistoricalFencingDrillsApp(MDApp):
                 if new_time <= 0:
                     break
                 time_string = clock_time_from_seconds(new_time)
-                new_row = (j, f'Time: {time_string}') + prev_row[2:-1] + (None, )
+                new_row = (j, None, time_string) + prev_row[3:-1] + (None, )
                 buffer.append(new_row)
                 j += 1
             prev_row = row
@@ -212,7 +413,7 @@ class HistoricalFencingDrillsApp(MDApp):
         buffer = sorted(buffer, key=lambda t: t[0])
         buffer.append((
             total_time + 11,
-            f'Time: {self.total_time_widget.text}',
+            self.total_time_widget.text,
             'READY',
             '',
             None
@@ -279,54 +480,66 @@ class HistoricalFencingDrillsApp(MDApp):
         return container
 
     def _create_screen_2(self):
-        container = MDBoxLayout(orientation='vertical')
+        container = MDFloatLayout()
         self.time_label = MDLabel(
-            text=f'Time: {self.total_time_widget.text}',
+            text=self.total_time_widget.text,
             halign='center',
-            font_style='H2'
+            font_style='H2',
+            pos_hint={'center_x': .5, 'center_y': .9}
         )
         self.call_label = MDLabel(
-            text='Ready',
+            text='READY',
             halign='center',
-            font_style='H1'
+            font_style='H3',
+            pos_hint={'center_x': .5, 'center_y': .15}
         )
+
         self.full_call_label = MDLabel(
             text='',
             halign='center',
-            font_style='H3'
+            font_style='H4',
+            pos_hint={'center_x': .5, 'center_y': .05}
         )
 
-        start_button = MDRoundFlatIconButton(
-            text='Begin',
-            icon='play',
-            size_hint=(None, None),
-            pos_hint={'center_x': .5, 'center_y': .5},
-            on_press=self.schedule_calls
+        self.call_diagram = RectangleWidget(
+            size_hint=(0.5, 0.6),
+            pos_hint={'center_x': .5, 'center_y': .5}
         )
+        self.call_pointer = CircleWidget(
+            size_hint=(0.5, 0.6),
+            pos_hint={'center_x': .5, 'center_y': .5}
+        )
+        self.call_diagram.pointer_position_code = None
+        self.call_pointer.pointer_position_code = None
 
         container.add_widget(self.time_label)
+        container.add_widget(self.call_diagram)
+        container.add_widget(self.call_pointer)
         container.add_widget(self.call_label)
         container.add_widget(self.full_call_label)
-        container.add_widget(start_button)
-        container.add_widget(MDLabel(text='', height=50))
 
         return container
 
     @staticmethod
     def _create_screen_3():
 
+        scroll_container = ScrollView(
+            size_hint=(1, None),
+            size=(Window.width, Window.height - 250)
+        )
+
         container = MDGridLayout(cols=1, spacing=10, size_hint_y=None, height=4000)
+        container.bind(minimum_height=container.setter('height'))
 
         paragraph1 = MDLabel(
             text=(
                 "\n"
                 "In the 1560s, Joachim Meyer created a manuscript "
                 "for one of his private students, providing instruction "
-                "in longsword, dussack, and side sword. It had much in "
-                "common with a Meyer's 1570 publication, Gründtliche "
-                "Beschreibung der Kunst des Fechtens. Although the later "
-                "publication was more extensive, the early manuscript "
-                "contained several cutting diagrams that can serve as useful drills."
+                "in longsword, dussack, and side sword. Though less "
+                "extensive than Meyer's later 1570 publication, the early manuscript "
+                "contained several cutting diagrams that serve as a useful basis"
+                "for constructing individual drills."
                 "\n"
             ),
             halign='left',
@@ -417,10 +630,6 @@ class HistoricalFencingDrillsApp(MDApp):
         container.add_widget(image3)
         container.add_widget(paragraph4)
 
-        scroll_container = ScrollView(
-            size_hint=(1, None),
-            size=(Window.width, Window.height - 250)
-        )
         scroll_container.add_widget(container)
 
         return scroll_container
@@ -428,8 +637,8 @@ class HistoricalFencingDrillsApp(MDApp):
     def cancel_all_events(self, event):
         for event in Clock.get_events():
             event.cancel()
-        self.time_label.text = 'Time: 00:00'
-        self.call_label.text = 'Ready'
+        self.time_label.text = self.total_time_widget.text
+        self.call_label.text = 'READY'
         self.full_call_label.text = ''
 
 
