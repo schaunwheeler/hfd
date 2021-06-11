@@ -8,7 +8,7 @@ providing instruction in longsword, dussack, and side sword. Though less extensi
 than Meyer's later 1570 publication, the early manuscript contained several cutting 
 diagrams that serve as a useful basis for constructing individual drills.
 
-![Image from Meyer's manuscript.](assets/images/meyer_ms.png?raw=true)
+![Image from Meyer's manuscript.](assets/images/meyer_ms.png)
 
 This app adapts those cutting diagrams to provide audio callouts of cut and 
 thrust combinations to serve for individual training. The app assumes a 
