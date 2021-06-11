@@ -8,7 +8,7 @@ providing instruction in longsword, dussack, and side sword. Though less extensi
 than Meyer's later 1570 publication, the early manuscript contained several cutting 
 diagrams that serve as a useful basis for constructing individual drills.
 
-![Image from Meyer's manuscript.](assets/images/meyer_ms.png)
+![Image from Meyer's manuscript.](assets/images/meyer_ms.jpg)
 
 This app adapts those cutting diagrams to provide audio callouts of cut and 
 thrust combinations to serve for individual training. The app assumes a 
@@ -23,7 +23,7 @@ The thrusts are illustrated here. In most cases, they are called out by the same
 number as their corresponding cut, with the word 'thrust' afterwards. The once 
 exception is the '9', which is a thrust to the center of the body.
 
-![Thrust patterns.](assets/images/Thrust patterns.png?raw=true)
+![Thrust patterns.](<assets/images/Thrust patterns.png>)
 
 The app provides multiple ways to adjust the training program:
 
