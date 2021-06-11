@@ -28,7 +28,7 @@ class CircleWidget(Widget):
         self.pointer_position_code = '9'
 
         with self.canvas:
-            Color(169, 0, 0, 1.0)
+            Color(240, 255, 0, 1)
             self.circle = Ellipse(
                 pos=self.center,
                 size=(self.width * 0.05, self.height * 0.05)
@@ -50,21 +50,21 @@ class CircleWidget(Widget):
         elif self.pointer_position_code == '9':
             return center_x - offset, center_y - offset
         elif self.pointer_position_code == '1':
-            return center_x + x - offset, center_y + y - offset
-        elif self.pointer_position_code == '2':
-            return center_x - x - offset, center_y + y - offset
-        elif self.pointer_position_code == '3':
-            return center_x + x - offset, center_y - y - offset
-        elif self.pointer_position_code == '4':
             return center_x - x - offset, center_y - y - offset
+        elif self.pointer_position_code == '2':
+            return center_x + x - offset, center_y - y - offset
+        elif self.pointer_position_code == '3':
+            return center_x - x - offset, center_y + y - offset
+        elif self.pointer_position_code == '4':
+            return center_x + x - offset, center_y + y - offset
         elif self.pointer_position_code == '5':
-            return center_x + x - offset, center_y - offset
-        elif self.pointer_position_code == '6':
             return center_x - x - offset, center_y - offset
+        elif self.pointer_position_code == '6':
+            return center_x + x - offset, center_y - offset
         elif self.pointer_position_code == '7':
-            return center_x - offset, center_y + y - offset
-        elif self.pointer_position_code == '8':
             return center_x - offset, center_y - y - offset
+        elif self.pointer_position_code == '8':
+            return center_x - offset, center_y + y - offset
         elif self.pointer_position_code == '1t':
             return center_x + part_x - offset, center_y + part_y - offset
         elif self.pointer_position_code == '2t':
@@ -99,7 +99,7 @@ class RectangleWidget(Widget):
         self.pointer_position_code = '9'
 
         with self.canvas:
-            Color(0, 0, 0, 0.33)
+            Color(0, 0, 0, 0.1)
             self.rect1 = Rectangle(
                 pos=self.center,
                 size=(-self.width / 2., self.height / 2.)
@@ -117,28 +117,28 @@ class RectangleWidget(Widget):
                 size=(-self.width / 2., -self.height / 2.)
             )
 
-            Color(0, 0, 0, 0.33)
+            Color(0, 0, 0, 0.1)
             self.rect4 = Rectangle(
                 pos=self.center,
                 size=(self.width / 2., -self.height / 2.)
             )
 
-            self.line_1_4_color = Color(0, 0, 0, 0.5)
+            self.line_1_4_color = Color(1, 1, 1, 0.9)
             self.line_1_4 = Line(
                 points=[0, self.height, self.width, 0],
                 width=2
             )
-            self.line_2_3_color = Color(0, 0, 0, 0.5)
+            self.line_2_3_color = Color(1, 1, 1, 0.9)
             self.line_2_3 = Line(
                 points=[0, self.height, self.width, 0],
                 width=2
             )
-            self.line_5_6_color = Color(0, 0, 0, 0.5)
+            self.line_5_6_color = Color(1, 1, 1, 0.9)
             self.line_5_6 = Line(
                 points=[self.width, self.height / 2, 0, self.height / 2],
                 width=2
             )
-            self.line_7_8_color = Color(0, 0, 0, 0.5)
+            self.line_7_8_color = Color(1, 1, 1, 0.9)
             self.line_7_8 = Line(
                 points=[self.width / 2, self.height, self.width / 2, 0],
                 width=2
@@ -189,10 +189,10 @@ class RectangleWidget(Widget):
         ]
 
     def update_lines(self, *args):
-        self.line_1_4_color.rgba = (0, 0, 0, 1.0)
-        self.line_2_3_color.rgba = (0, 0, 0, 1.0)
-        self.line_5_6_color.rgba = (0, 0, 0, 1.0)
-        self.line_7_8_color.rgba = (0, 0, 0, 1.0)
+        self.line_1_4_color.rgba = (1, 1, 1, 0.9)
+        self.line_2_3_color.rgba = (1, 1, 1, 0.9)
+        self.line_5_6_color.rgba = (1, 1, 1, 0.9)
+        self.line_7_8_color.rgba = (1, 1, 1, 0.9)
 
         self.line_1_4.width = 2
         self.line_2_3.width = 2
@@ -200,17 +200,17 @@ class RectangleWidget(Widget):
         self.line_7_8.width = 2
 
         if self.pointer_position_code in ('1', '4'):
-            self.line_1_4_color.rgba = (169, 0, 0, 1.0)
-            self.line_1_4.width = 5
+            self.line_1_4_color.rgba = (240, 255, 0, 1)
+            self.line_1_4.width = 10
         elif self.pointer_position_code in ('2', '3'):
-            self.line_2_3_color.rgba = (169, 0, 0, 1.0)
-            self.line_2_3.width = 5
+            self.line_2_3_color.rgba = (240, 255, 0, 1)
+            self.line_2_3.width = 10
         elif self.pointer_position_code in ('5', '6'):
-            self.line_5_6_color.rgba = (169, 0, 0, 0.5)
-            self.line_5_6.width = 5
+            self.line_5_6_color.rgba = (240, 255, 0, 1)
+            self.line_5_6.width = 10
         elif self.pointer_position_code in ('7', '8'):
-            self.line_7_8_color.rgba = (169, 0, 0, 1.0)
-            self.line_7_8.width = 5
+            self.line_7_8_color.rgba = (240, 255, 0, 1)
+            self.line_7_8.width = 10
         else:
             pass
 
@@ -262,7 +262,7 @@ class HistoricalFencingDrillsApp(MDApp):
             text='Help',
             icon='book',
             on_tab_press=self.cancel_all_events,
-            height=Window.height
+            on_tab_release=self.set_dims
         )
         parent.add_widget(toolbar)
 
@@ -302,8 +302,12 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return patterns
 
+    def _update_circle(self, value, nap):
+        self.call_pointer.pointer_position_code = value
+        self.call_pointer.update_circle()
+
     def _update_screen2(self, row, nap):
-        _, call_length, time_text, call_text, full_call_text, play_sound = row
+        call_time, call_length, time_text, call_text, full_call_text, play_sound = row
         self.time_label.text = time_text
         self.call_label.text = call_text
         self.full_call_label.text = full_call_text
@@ -313,6 +317,7 @@ class HistoricalFencingDrillsApp(MDApp):
             self.call_diagram.update_lines()
             self.call_pointer.pointer_position_code = call_text
             self.call_pointer.update_circle()
+
             play_sound.play()
 
     def _create_buffer(self):
@@ -481,24 +486,38 @@ class HistoricalFencingDrillsApp(MDApp):
 
     def _create_screen_2(self):
         container = MDFloatLayout()
+        with container.canvas:
+            Color(0, 0, 0, 0.75)
+
+            Rectangle(
+                pos=(0, 0),
+                size=(Window.width, Window.height)
+            )
+
         self.time_label = MDLabel(
             text=self.total_time_widget.text,
             halign='center',
             font_style='H2',
-            pos_hint={'center_x': .5, 'center_y': .9}
+            pos_hint={'center_x': .5, 'center_y': .9},
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1)
         )
         self.call_label = MDLabel(
             text='READY',
             halign='center',
             font_style='H3',
-            pos_hint={'center_x': .5, 'center_y': .15}
+            pos_hint={'center_x': .5, 'center_y': .15},
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1)
         )
 
         self.full_call_label = MDLabel(
             text='',
             halign='center',
             font_style='H4',
-            pos_hint={'center_x': .5, 'center_y': .05}
+            pos_hint={'center_x': .5, 'center_y': .05},
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1)
         )
 
         self.call_diagram = RectangleWidget(
@@ -520,87 +539,99 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return container
 
-    @staticmethod
-    def _create_screen_3():
+    def _create_screen_3(self):
 
-        scroll_container = ScrollView(
+        self.scroll_container = ScrollView(
             size_hint=(1, None),
             size=(Window.width, Window.height - 250)
         )
 
-        container = MDGridLayout(cols=1, spacing=10, size_hint_y=None, height=4000)
-        container.bind(minimum_height=container.setter('height'))
+        self.container = MDGridLayout(
+            cols=1, spacing=30,
+            size_hint_y=None, size_hint_x=None,
+            height=4200, width=Window.width
+        )
+        self.container.bind(minimum_height=self.container.setter('height'))
 
-        paragraph1 = MDLabel(
+        self.paragraph1 = MDLabel(
             text=(
-                "\n"
                 "In the 1560s, Joachim Meyer created a manuscript "
                 "for one of his private students, providing instruction "
                 "in longsword, dussack, and side sword. Though less "
                 "extensive than Meyer's later 1570 publication, the early manuscript "
                 "contained several cutting diagrams that serve as a useful basis"
                 "for constructing individual drills."
-                "\n"
             ),
-            halign='left',
+            halign='center',
             font_style='Body1',
             size_hint_y=None,
-            height=300
+            size_hint_x=None,
+            width=self.container.width
         )
 
-        image1 = Image(
+        self.image1 = Image(
             source='assets/images/meyer_ms.jpg',
+            allow_stretch=True,
+            keep_ratio=True,
             size_hint_y=None,
-            height=600
+            size_hint_x=None,
+            width=self.container.width,
+            height=self.container.width,
         )
 
-        paragraph2 = MDLabel(
+        self.paragraph2 = MDLabel(
             text=(
-                "\n"
                 "This app adapts those cutting diagrams to provide audio "
                 "callouts of cut and thrust combinations to serve for individual "
                 "training. The app assumes a simplified system of eight cuts and "
                 "9 thrusts. The cuts are illustrated here, witih the cut begining "
                 "at the position of its respective number and continuing along the "
-                "line that extends from that number."
-                "\n"
+                "line that extends from that number. This differs from the user "
+                "interface, where the yellow dot marks where the cut should end."
             ),
-            halign='left',
+            halign='center',
             font_style='Body1',
             size_hint_y=None,
-            height=300
+            size_hint_x=None,
+            width=self.container.width
         )
 
-        image2 = Image(
+        self.image2 = Image(
             source='assets/images/Cut patterns.png',
+            allow_stretch=True,
+            keep_ratio=True,
             size_hint_y=None,
-            height=600
+            size_hint_x=None,
+            width=self.container.width,
+            height=self.container.width
         )
 
-        paragraph3 = MDLabel(
+        self.paragraph3 = MDLabel(
             text=(
-                "\n"
                 "The thrusts are illustrated here. In most cases, they "
                 "are called out by the same number as their corresponding "
                 "cut, with the word 'thrust' afterwards. The once exception "
                 "is the '9', which is a thrust to the center of the body."
-                "\n"
             ),
-            halign='left',
+            halign='center',
             font_style='Body1',
             size_hint_y=None,
-            height=300
+            size_hint_x=None,
+            width=self.container.width
         )
 
-        image3 = Image(
+        self.image3 = Image(
             source='assets/images/Thrust patterns.png',
+            allow_stretch=True,
+            keep_ratio=True,
             size_hint_y=None,
-            height=600
+            size_hint_x=None,
+            width=self.container.width,
+            height=self.container.width
         )
 
-        paragraph4 = MDLabel(
+        self.paragraph4 = MDLabel(
             text=(
-                "\n\n\n\n\n\n"
                 "The app provides multiple ways to adjust the training program:\n\n"
                 "   \u2022 [b]Round duration (minutes):[/b] the amount of time "
                 "you want to train for.\n\n"
@@ -616,25 +647,53 @@ class HistoricalFencingDrillsApp(MDApp):
                 "then the repetition will only apply to the full combo, not each progressive subset.\n\n"
             ),
             markup=True,
-            halign='left',
+            halign='center',
             font_style='Body1',
             size_hint_y=None,
-            height=600
+            size_hint_x=None,
+            width=self.container.width
         )
 
-        container.add_widget(paragraph1)
-        container.add_widget(image1)
-        container.add_widget(paragraph2)
-        container.add_widget(image2)
-        container.add_widget(paragraph3)
-        container.add_widget(image3)
-        container.add_widget(paragraph4)
+        self.container.add_widget(self.paragraph1)
+        self.container.add_widget(self.image1)
+        self.container.add_widget(self.paragraph2)
+        self.container.add_widget(self.image2)
+        self.container.add_widget(self.paragraph3)
+        self.container.add_widget(self.image3)
+        self.container.add_widget(self.paragraph4)
 
-        scroll_container.add_widget(container)
+        self.scroll_container.add_widget(self.container)
+        Window.bind(width=self.set_dims, height=self.set_dims)
 
-        return scroll_container
+        return self.scroll_container
 
-    def cancel_all_events(self, event):
+    def set_dims(self, *args):
+        width = self.scroll_container.width
+        adjusted_width = width #  * 0.66
+        self.image1.width = adjusted_width
+        self.image1.height = adjusted_width / self.image1.image_ratio
+        self.image2.width = adjusted_width
+        self.image2.height = adjusted_width / self.image2.image_ratio
+        self.image3.width = adjusted_width
+        self.image3.height = adjusted_width / self.image3.image_ratio
+        self.paragraph1.width = width
+        self.paragraph2.width = width
+        self.paragraph3.width = width
+        self.paragraph4.width = width
+        self.paragraph1.height = self.paragraph1.texture_size[1]
+        self.paragraph2.height = self.paragraph2.texture_size[1]
+        self.paragraph3.height = self.paragraph3.texture_size[1]
+        self.paragraph4.height = self.paragraph4.texture_size[1]
+        new_height = self.image1.height + self.image2.height + self.image3.height
+        new_height += (
+                self.paragraph1.height + self.paragraph2.height +
+                self.paragraph3.height + self.paragraph4.height
+        )
+
+        self.container.height = new_height + 100
+        self.container.width = width
+
+    def cancel_all_events(self, *args):
         for event in Clock.get_events():
             event.cancel()
         self.time_label.text = self.total_time_widget.text
