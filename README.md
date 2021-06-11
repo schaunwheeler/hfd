@@ -15,15 +15,11 @@ thrust combinations to serve for individual training. The app assumes a
 simplified system of eight cuts and 9 thrusts. The cuts are illustrated here, 
 witih the cut begining at the position of its respective number and continuing 
 along the line that extends from that number. (This differs from the user interface, 
-where the yellow dot marks where the cut should end.)
+where the yellow dot marks where the cut should end.) The one additional 'cut' - 
+the '9' - is actually a thrust, to center of the body.
 
-![Cut patterns.](<assets/images/Cut patterns.png?>)
+![Cut patterns.](<assets/images/cut_patterns.png?>)
 
-The thrusts are illustrated here. In most cases, they are called out by the same 
-number as their corresponding cut, with the word 'thrust' afterwards. The once 
-exception is the '9', which is a thrust to the center of the body.
-
-![Thrust patterns.](<assets/images/Thrust patterns.png>)
 
 The app provides multiple ways to adjust the training program:
 
@@ -32,9 +28,12 @@ The app provides multiple ways to adjust the training program:
    out the next cut or thrust.
  - **Pause between combos (seconds):** the number of seconds to wait after a 
    combination of multiple cuts and/or thrusts have been called out.
- - **Progressively expand combos:** if ON, the app will start by calling out 
-   the first two moves of the combo, then expand to three, then four, and so on, 
-   until the full combo is recited.
+ - **Combo size:** this indicates the numbers of unique drill combinations the 
+   app has available for each length. For example, if '4' is selected, then each 
+   drill will involve four cuts.
  - **Repeat full combo at end:** the number of times to repeat the combo before 
    moving on to the next one. If progressive expansion is on, then the repetition 
    will only apply to the full combo, not each progressive subset.
+ - **Progressively expand combos:** if ON, the app will start by calling out 
+   the first two moves of the combo, then expand to three, then four, and so on, 
+   until the full combo is recited.
