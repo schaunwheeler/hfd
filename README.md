@@ -17,7 +17,7 @@ witih the cut begining at the position of its respective number and continuing
 along the line that extends from that number. (This differs from the user interface, 
 where the yellow dot marks where the cut should end.)
 
-![Cut patterns.](assets/images/Cut patterns.png?raw=true)
+![Cut patterns.](<assets/images/Cut patterns.png?>)
 
 The thrusts are illustrated here. In most cases, they are called out by the same 
 number as their corresponding cut, with the word 'thrust' afterwards. The once 
