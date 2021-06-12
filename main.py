@@ -444,31 +444,31 @@ class HistoricalFencingDrillsApp(MDApp):
             cols=2
         )
 
-        title = MDLabel(text='Round duration (minutes):', font_style='H5')
+        title = MDLabel(text='Round duration (minutes):', font_style='H6')
         self.total_time_widget = Spinner(
             text='03:00',
             values=[str(h).zfill(2) + ':00' for h in range(1, 20)],
-            size_hint=(0.25, 0.2),
+            size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
         container.add_widget(title)
         container.add_widget(self.total_time_widget)
 
-        title = MDLabel(text='Pause between calls (seconds):', font_style='H5')
+        title = MDLabel(text='Pause between calls (seconds):', font_style='H6')
         self.call_wait_widget = Spinner(
             text='0.5',
             values=[str(x / 100) for x in range(5, 205, 5)],
-            size_hint=(0.25, 0.2),
+            size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
         container.add_widget(title)
         container.add_widget(self.call_wait_widget)
 
-        title = MDLabel(text='Pause between combos (seconds):', font_style='H5')
+        title = MDLabel(text='Pause between combos (seconds):', font_style='H6')
         self.combo_wait_widget = Spinner(
             text='1.0',
             values=[str(x / 100) for x in range(5, 205, 5)],
-            size_hint=(0.25, 0.2),
+            size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
         container.add_widget(title)
@@ -481,31 +481,31 @@ class HistoricalFencingDrillsApp(MDApp):
             size_dict[size] = size_dict.get(size, 0) + 1
 
         widget_values = [f'{a} ({b} drills)' for a, b in sorted(size_dict.items())]
-        title = MDLabel(text='Combo size:', font_style='H5')
+        title = MDLabel(text='Combo size:', font_style='H6')
         self.combo_size_widget = Spinner(
             text=widget_values[0],
             values=widget_values,
-            size_hint=(0.25, 0.2),
+            size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
         container.add_widget(title)
         container.add_widget(self.combo_size_widget)
 
-        title = MDLabel(text='Repeat full combo at end:', font_style='H5')
+        title = MDLabel(text='Repeat full combo at end:', font_style='H6')
         self.combo_repeat_widget = Spinner(
             text='1',
             values=[str(x) for x in range(11)],
-            size_hint=(0.25, 0.2),
+            size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
         container.add_widget(title)
         container.add_widget(self.combo_repeat_widget)
 
-        title = MDLabel(text='Progressively expand combos:', font_style='H5')
+        title = MDLabel(text='Progressively expand combos:', font_style='H6')
         self.combo_expand_widget = Spinner(
             text='ON',
             values=['OFF', 'ON'],
-            size_hint=(0.25, 0.2),
+            size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
         container.add_widget(title)
