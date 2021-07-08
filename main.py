@@ -5,8 +5,8 @@ from functools import partial
 from kivymd.app import MDApp
 from kivy.clock import Clock
 from kivy.uix.image import Image
-from kivy.uix.spinner import Spinner
 from kivy.core.audio import SoundLoader
+from kivy.metrics import dp
 
 from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
@@ -20,6 +20,67 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel
+from kivymd.uix.button import MDRoundFlatButton
+from kivymd.uix.menu import MDDropdownMenu
+
+
+class DropdownClass(MDRoundFlatButton):
+
+    def __init__(self, menu_items, truncate_label=None, **kwargs):
+        super().__init__(**kwargs)
+
+        self.truncate_label = truncate_label
+        n_char = max(len(x) for x in menu_items)
+        if n_char < 3:
+            width_mult = 1
+        elif n_char < 10:
+            width_mult = 2
+        else:
+            width_mult = 4
+
+        menu_items = [
+            {
+                "viewclass": "OneLineListItem",
+                "text": f"{v}",
+                "height": dp(42),
+                "on_release": lambda x=f"{v}": self.set_item(x)
+            } for v in menu_items
+        ]
+        self.current_item = None
+        self.on_press = self.open_menu
+
+        self.menu = MDDropdownMenu(
+            caller=self,
+            items=menu_items,
+            position='auto',
+            width_mult=width_mult,
+            max_height=dp(42 * 3)
+        )
+        self.menu.bind()
+        self.set_item(menu_items[0]['text'])
+
+    def set_item(self, text_item):
+        if text_item not in [d['text'] for d in self.menu.items]:
+            raise ValueError('Target text not in menu.')
+        self.current_item = text_item
+        if self.truncate_label is not None:
+            if len(text_item) > self.truncate_label:
+                i = self.truncate_label - 3
+                if i < 1:
+                    i = 1
+                self.text = text_item[:i] + '...'
+            else:
+                self.text = text_item
+        else:
+            self.text = text_item
+        self.menu.dismiss()
+
+    def open_menu(self, *_):
+        self.menu.open()
+        text_list = [d['text'] for d in self.menu.items]
+        n_items = len(text_list)
+        ind = text_list.index(self.current_item)
+        self.menu.ids.md_menu.scroll_y = 1.0 - (ind / n_items)
 
 
 class WrappedLabel(MDLabel):
@@ -473,37 +534,40 @@ class HistoricalFencingDrillsApp(MDApp):
             cols=2
         )
 
-        title = MDLabel(text='Round duration (minutes):', font_style='H6')
-        self.total_time_widget = Spinner(
-            text=self.settings.get('Round duration (minutes):')['text'],
-            values=[str(h).zfill(2) + ':00' for h in range(1, 20)],
+        title = MDLabel(text='Round duration (minutes):', font_style='Button')
+        self.total_time_widget = DropdownClass(
+            menu_items=[str(h).zfill(2) + ':00' for h in range(1, 20)],
+            truncate_label=None,
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.total_time_widget.set_item(self.settings.get('Round duration (minutes):')['text'])
         self.total_time_widget.ids['title'] = title
         self.total_time_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.total_time_widget)
 
-        title = MDLabel(text='Pause between calls (seconds):', font_style='H6')
-        self.call_wait_widget = Spinner(
-            text=self.settings.get('Pause between calls (seconds):')['text'],
-            values=[str(x / 100) for x in range(5, 205, 5)],
+        title = MDLabel(text='Pause between calls (seconds):', font_style='Button')
+        self.call_wait_widget = DropdownClass(
+            menu_items=[str(x / 100) for x in range(5, 205, 5)],
+            truncate_label=None,
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.call_wait_widget.set_item(self.settings.get('Pause between calls (seconds):')['text'])
         self.call_wait_widget.ids['title'] = title
         self.call_wait_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.call_wait_widget)
 
-        title = MDLabel(text='Pause between combos (seconds):', font_style='H6')
-        self.combo_wait_widget = Spinner(
-            text=self.settings.get('Pause between combos (seconds):')['text'],
-            values=[str(x / 100) for x in range(5, 205, 5)],
+        title = MDLabel(text='Pause between combos (seconds):', font_style='Button')
+        self.combo_wait_widget = DropdownClass(
+            menu_items=[str(x / 100) for x in range(5, 205, 5)],
+            truncate_label=None,
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.combo_wait_widget.set_item(self.settings.get('Pause between combos (seconds):')['text'])
         self.combo_wait_widget.ids['title'] = title
         self.combo_wait_widget.bind(text=self.store_new_value)
         container.add_widget(title)
@@ -518,37 +582,40 @@ class HistoricalFencingDrillsApp(MDApp):
             if a <= b
         ]
 
-        title = MDLabel(text='Combo length:', font_style='H6')
-        self.combo_length_widget = Spinner(
-            text=self.settings.get('Combo length:')['text'],
-            values=widget_values,
+        title = MDLabel(text='Combo length:', font_style='Button')
+        self.combo_length_widget = DropdownClass(
+            menu_items=widget_values,
+            truncate_label=None,
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.combo_length_widget.set_item(self.settings.get('Combo length:')['text'])
         self.combo_length_widget.ids['title'] = title
         self.combo_length_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.combo_length_widget)
 
-        title = MDLabel(text='Repeat full combo at end:', font_style='H6')
-        self.combo_repeat_widget = Spinner(
-            text=self.settings.get('Repeat full combo at end:')['text'],
-            values=['OFF', 'ON'],
+        title = MDLabel(text='Repeat full combo at end:', font_style='Button')
+        self.combo_repeat_widget = DropdownClass(
+            menu_items=['OFF', 'ON'],
+            truncate_label=None,
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.combo_repeat_widget.set_item(self.settings.get('Repeat full combo at end:')['text'])
         self.combo_repeat_widget.ids['title'] = title
         self.combo_repeat_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.combo_repeat_widget)
 
-        title = MDLabel(text='Progressively expand combos:', font_style='H6')
-        self.combo_expand_widget = Spinner(
-            text=self.settings.get('Progressively expand combos:')['text'],
-            values=['OFF', 'ON'],
+        title = MDLabel(text='Progressively expand combos:', font_style='Button')
+        self.combo_expand_widget = DropdownClass(
+            menu_items=['OFF', 'ON'],
+            truncate_label=None,
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.combo_expand_widget.set_item(self.settings.get('Progressively expand combos:')['text'])
         self.combo_expand_widget.ids['title'] = title
         self.combo_expand_widget.bind(text=self.store_new_value)
         container.add_widget(title)
