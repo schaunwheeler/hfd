@@ -313,7 +313,7 @@ class HistoricalFencingDrillsApp(MDApp):
             )
 
     @staticmethod
-    def _get_patterns(size=None):
+    def _get_patterns(min_size=None, max_size=None):
 
         with open('assets/combos.txt', 'r') as f:
             patterns = [
@@ -321,12 +321,16 @@ class HistoricalFencingDrillsApp(MDApp):
                 for line in f.readlines()
             ]
 
-        if size is not None:
-            patterns = [
-                pat
-                for pat in patterns
-                if len(pat) == size
-            ]
+        if min_size is None:
+            min_size = 1
+        if max_size is None:
+            max_size = len(max(patterns, key=len))
+
+        patterns = [
+            pat
+            for pat in patterns
+            if (len(pat) >= min_size) and (len(pat) <= max_size)
+        ]
 
         random.shuffle(patterns)
 
@@ -347,14 +351,23 @@ class HistoricalFencingDrillsApp(MDApp):
             play_sound.play()
 
     def _create_buffer(self):
-        call_wait = convert_value(self.call_wait_widget.text)
-        combo_wait = convert_value(self.combo_wait_widget.text)
-        total_time = convert_value(self.total_time_widget.text)
-        combo_size = convert_value(self.combo_size_widget.text)
-        combo_expand = convert_value(self.combo_expand_widget.text)
-        combo_repeat = convert_value(self.combo_repeat_widget.text)
 
-        patterns = self._get_patterns(combo_size)
+        call_wait = float(self.call_wait_widget.text)
+        combo_wait = float(self.combo_wait_widget.text)
+        m, s = self.total_time_widget.text.split(':')
+        total_time = int(m) * 60 + int(s)
+
+        if ' to ' not in self.combo_length_widget.text:
+            min_size, max_size = int(self.combo_length_widget.text)
+        else:
+            min_size, max_size = self.combo_length_widget.text.split(' to ')
+            min_size = int(min_size)
+            max_size = int(max_size)
+
+        combo_expand = True if self.combo_expand_widget.text == 'ON' else False
+        combo_repeat = True if self.combo_repeat_widget.text == 'ON' else False
+
+        patterns = self._get_patterns(min_size=min_size, max_size=max_size)
 
         sounds = {
             s: SoundLoader.load(f'assets/sounds/{s}.wav')
@@ -496,29 +509,31 @@ class HistoricalFencingDrillsApp(MDApp):
         container.add_widget(title)
         container.add_widget(self.combo_wait_widget)
 
-        patterns = self._get_patterns()
-        size_dict = dict()
-        for pat in patterns:
-            size = len(pat)
-            size_dict[size] = size_dict.get(size, 0) + 1
+        patterns = self._get_patterns(min_size=None, max_size=None)
+        size_set = sorted(set([len(x) for x in patterns]))
+        widget_values = [
+            f'{a}' if a == b else f'{a} to {b}'
+            for a in size_set
+            for b in size_set
+            if a <= b
+        ]
 
-        widget_values = [f'{a} ({b} drills)' for a, b in sorted(size_dict.items())]
-        title = MDLabel(text='Combo size:', font_style='H6')
-        self.combo_size_widget = Spinner(
-            text=self.settings.get('Combo size:')['text'],
+        title = MDLabel(text='Combo length:', font_style='H6')
+        self.combo_length_widget = Spinner(
+            text=self.settings.get('Combo length:')['text'],
             values=widget_values,
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
-        self.combo_size_widget.ids['title'] = title
-        self.combo_size_widget.bind(text=self.store_new_value)
+        self.combo_length_widget.ids['title'] = title
+        self.combo_length_widget.bind(text=self.store_new_value)
         container.add_widget(title)
-        container.add_widget(self.combo_size_widget)
+        container.add_widget(self.combo_length_widget)
 
         title = MDLabel(text='Repeat full combo at end:', font_style='H6')
         self.combo_repeat_widget = Spinner(
             text=self.settings.get('Repeat full combo at end:')['text'],
-            values=[str(x) for x in range(11)],
+            values=['OFF', 'ON'],
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
@@ -745,5 +760,5 @@ def clock_time_from_seconds(seconds):
 
 if __name__ == '__main__':
 
-    # Window.size = (720 / 2, 1280 / 2)
+    Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
