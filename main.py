@@ -392,7 +392,7 @@ class HistoricalFencingDrillsApp(MDApp):
                 i += 1
             else:
                 if len(patterns) == 0:
-                    patterns = self._get_patterns(combo_size)
+                    patterns = self._get_patterns(min_size=min_size, max_size=max_size)
 
                 pat = patterns.pop()
                 start = 2 if combo_expand else len(pat)
