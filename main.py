@@ -12,6 +12,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
 from kivy.graphics import Rectangle, Color, Line, Ellipse
+from kivy.storage.jsonstore import JsonStore
 
 from kivymd.uix.toolbar import MDToolbar
 from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
@@ -19,6 +20,16 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel
+
+
+class WrappedLabel(MDLabel):
+    # Based on https://stackoverflow.com/a/58227983
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bind(
+            width=lambda *x:
+            self.setter('text_size')(self, (self.width, None)),
+            texture_size=lambda *x: self.setter('height')(self, self.texture_size[1]))
 
 
 class CircleWidget(Widget):
@@ -36,7 +47,7 @@ class CircleWidget(Widget):
 
         self.bind(pos=self.update_circle, size=self.update_circle)
 
-    def calculate_coordinates(self, *args):
+    def calculate_coordinates(self, *_):
         center_x, center_y = self.center
         x = self.width / 2
         y = self.height / 2
@@ -84,7 +95,7 @@ class CircleWidget(Widget):
         else:
             raise ValueError('Invalid pointer_position_code.')
 
-    def update_circle(self, *args):
+    def update_circle(self, *_):
         offset = min(self.width * 0.05, self.height * 0.05)
         self.circle.pos = self.calculate_coordinates()
         self.circle.size = (offset * 2, offset * 2)
@@ -150,7 +161,7 @@ class RectangleWidget(Widget):
         self.bind(pos=self.update_rect, size=self.update_rect)
         self.bind(pos=self.update_lines, size=self.update_lines)
 
-    def update_rect(self, *args):
+    def update_rect(self, *_):
         self.rect1.pos = self.center
         self.rect1.size = (-self.width / 2., self.height / 2.)
 
@@ -191,7 +202,7 @@ class RectangleWidget(Widget):
             self.center[1] - (self.height / 2)
         ]
 
-    def update_lines(self, *args):
+    def update_lines(self, *_):
         self.line_1_4_color.rgba = (1, 1, 1, 0.9)
         self.line_2_3_color.rgba = (1, 1, 1, 0.9)
         self.line_5_6_color.rgba = (1, 1, 1, 0.9)
@@ -229,6 +240,7 @@ class HistoricalFencingDrillsApp(MDApp):
         self.combo_wait_widget = None
         self.combo_repeat_widget = None
         self.combo_expand_widget = None
+        self.settings = JsonStore('settings.json')
 
     def build(self):
         # from kivy.utils import platform
@@ -266,8 +278,7 @@ class HistoricalFencingDrillsApp(MDApp):
             name='screen 3',
             text='Help',
             icon='book',
-            on_tab_press=self.cancel_all_events,
-            on_tab_release=self.set_dims
+            on_tab_press=self.open_screen3
         )
         parent.add_widget(toolbar)
 
@@ -287,7 +298,11 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return parent
 
-    def schedule_calls(self, event):
+    def open_screen3(self, *_):
+        self.cancel_all_events()
+        self.set_dims()
+
+    def schedule_calls(self, _):
         for row in self._create_buffer():
             Clock.schedule_once(
                 partial(
@@ -317,7 +332,7 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return patterns
 
-    def _update_screen2(self, row, nap):
+    def _update_screen2(self, row, _):
         call_time, call_length, time_text, call_text, full_call_text, play_sound = row
         self.time_label.text = time_text
         self.call_label.text = call_text
@@ -430,6 +445,7 @@ class HistoricalFencingDrillsApp(MDApp):
         buffer = sorted(buffer, key=lambda t: t[0])
         buffer.append((
             total_time + 11,
+            0,
             self.total_time_widget.text,
             'READY',
             '',
@@ -446,31 +462,37 @@ class HistoricalFencingDrillsApp(MDApp):
 
         title = MDLabel(text='Round duration (minutes):', font_style='H6')
         self.total_time_widget = Spinner(
-            text='03:00',
+            text=self.settings.get('Round duration (minutes):')['text'],
             values=[str(h).zfill(2) + ':00' for h in range(1, 20)],
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.total_time_widget.ids['title'] = title
+        self.total_time_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.total_time_widget)
 
         title = MDLabel(text='Pause between calls (seconds):', font_style='H6')
         self.call_wait_widget = Spinner(
-            text='0.5',
+            text=self.settings.get('Pause between calls (seconds):')['text'],
             values=[str(x / 100) for x in range(5, 205, 5)],
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.call_wait_widget.ids['title'] = title
+        self.call_wait_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.call_wait_widget)
 
         title = MDLabel(text='Pause between combos (seconds):', font_style='H6')
         self.combo_wait_widget = Spinner(
-            text='1.0',
+            text=self.settings.get('Pause between combos (seconds):')['text'],
             values=[str(x / 100) for x in range(5, 205, 5)],
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.combo_wait_widget.ids['title'] = title
+        self.combo_wait_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.combo_wait_widget)
 
@@ -483,35 +505,45 @@ class HistoricalFencingDrillsApp(MDApp):
         widget_values = [f'{a} ({b} drills)' for a, b in sorted(size_dict.items())]
         title = MDLabel(text='Combo size:', font_style='H6')
         self.combo_size_widget = Spinner(
-            text=widget_values[0],
+            text=self.settings.get('Combo size:')['text'],
             values=widget_values,
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.combo_size_widget.ids['title'] = title
+        self.combo_size_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.combo_size_widget)
 
         title = MDLabel(text='Repeat full combo at end:', font_style='H6')
         self.combo_repeat_widget = Spinner(
-            text='1',
+            text=self.settings.get('Repeat full combo at end:')['text'],
             values=[str(x) for x in range(11)],
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.combo_repeat_widget.ids['title'] = title
+        self.combo_repeat_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.combo_repeat_widget)
 
         title = MDLabel(text='Progressively expand combos:', font_style='H6')
         self.combo_expand_widget = Spinner(
-            text='ON',
+            text=self.settings.get('Progressively expand combos:')['text'],
             values=['OFF', 'ON'],
             size_hint=(0.35, 0.2),
             pos_hint={'center_x': .0, 'center_y': .0}
         )
+        self.combo_expand_widget.ids['title'] = title
+        self.combo_expand_widget.bind(text=self.store_new_value)
         container.add_widget(title)
         container.add_widget(self.combo_expand_widget)
 
         return container
+
+    def store_new_value(self, widget, text):
+        key = widget.ids['title'].text
+        self.settings.put(key, text=text)
 
     def _create_screen_2(self):
         container = MDFloatLayout()
@@ -571,18 +603,16 @@ class HistoricalFencingDrillsApp(MDApp):
     def _create_screen_3(self):
 
         self.scroll_container = ScrollView(
-            size_hint=(1, None),
-            size=(Window.width, Window.height - 250)
+            do_scroll_x=False
         )
 
-        self.container = MDGridLayout(
-            cols=1, spacing=30,
-            size_hint_y=None, size_hint_x=None,
-            height=4200, width=Window.width
+        from kivy.uix.gridlayout import GridLayout
+        self.container = GridLayout(
+            cols=1, spacing=10, size_hint_x=1, size_hint_y=None
         )
         self.container.bind(minimum_height=self.container.setter('height'))
 
-        self.paragraph1 = MDLabel(
+        self.paragraph1 = WrappedLabel(
             text=(
                 "In the 1560s, Joachim Meyer created a manuscript "
                 "for one of his private students, providing instruction "
@@ -594,8 +624,8 @@ class HistoricalFencingDrillsApp(MDApp):
             halign='center',
             font_style='Body1',
             size_hint_y=None,
-            size_hint_x=None,
-            width=self.container.width
+            size_hint_x=1,
+            text_size=(None, None)
         )
 
         self.image1 = Image(
@@ -608,7 +638,7 @@ class HistoricalFencingDrillsApp(MDApp):
             height=self.container.width,
         )
 
-        self.paragraph2 = MDLabel(
+        self.paragraph2 = WrappedLabel(
             text=(
                 "This app adapts those cutting diagrams to provide audio "
                 "callouts of cut and thrust combinations to serve for individual "
@@ -623,8 +653,8 @@ class HistoricalFencingDrillsApp(MDApp):
             halign='center',
             font_style='Body1',
             size_hint_y=None,
-            size_hint_x=None,
-            width=self.container.width
+            size_hint_x=1,
+            text_size=(None, None)
         )
 
         self.image2 = Image(
@@ -637,7 +667,7 @@ class HistoricalFencingDrillsApp(MDApp):
             height=self.container.width
         )
 
-        self.paragraph3 = MDLabel(
+        self.paragraph3 = WrappedLabel(
             text=(
                 "The app provides multiple ways to adjust the training program:\n\n"
                 "   \u2022 [b]Round duration (minutes):[/b] the amount of time "
@@ -660,8 +690,8 @@ class HistoricalFencingDrillsApp(MDApp):
             halign='center',
             font_style='Body1',
             size_hint_y=None,
-            size_hint_x=None,
-            width=self.container.width
+            size_hint_x=1,
+            text_size=(None, None)
         )
 
         self.container.add_widget(self.paragraph1)
@@ -671,36 +701,18 @@ class HistoricalFencingDrillsApp(MDApp):
         self.container.add_widget(self.paragraph3)
 
         self.scroll_container.add_widget(self.container)
-        Window.bind(width=self.set_dims, height=self.set_dims)
 
         return self.scroll_container
 
-    def set_dims(self, *args):
-        width = self.scroll_container.width
+    def set_dims(self, *_):
+        width = Window.width
         adjusted_width = width  # * 0.66
         self.image1.width = adjusted_width
         self.image1.height = adjusted_width / self.image1.image_ratio
         self.image2.width = adjusted_width
         self.image2.height = adjusted_width / self.image2.image_ratio
-        self.paragraph1.width = width
-        self.paragraph2.width = width
-        self.paragraph3.width = width
-        self.paragraph1.height = self.paragraph1.texture_size[1]
-        self.paragraph2.height = self.paragraph2.texture_size[1]
-        self.paragraph3.height = self.paragraph3.texture_size[1]
 
-        new_height = (
-                self.image1.height +
-                self.image2.height +
-                self.paragraph1.height +
-                self.paragraph2.height +
-                self.paragraph3.height
-        )
-
-        self.container.height = new_height + 100
-        self.container.width = width
-
-    def cancel_all_events(self, *args):
+    def cancel_all_events(self, *_):
         for event in Clock.get_events():
             event.cancel()
         self.time_label.text = self.total_time_widget.text
@@ -710,6 +722,7 @@ class HistoricalFencingDrillsApp(MDApp):
         self.call_pointer.pointer_position_code = None
         self.call_diagram.update_lines()
         self.call_pointer.update_circle()
+
 
 def convert_value(v):
     if ':' in v:
@@ -731,4 +744,6 @@ def clock_time_from_seconds(seconds):
 
 
 if __name__ == '__main__':
+
+    # Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
