@@ -1,0 +1,13 @@
+People’s interest in historical swordsmanship often comes from its connection to other interests, such as later sword forms such as sport fencing, aikido, or kendo; role-playing groups or LARP gaming; theater or choreographed fencing; reenactment; or military history or medieval history. Even a definite interest in learning swordsmanship as conveyed in a particular historical text or by a particular master is complicated by the many ways the texts can be interpreted.
+
+Accommodating all of these goals and priorities within a single app would be very difficult, if not impossible. Therefore, this app:
+
+   • Uses general terms instead of focusing on the vocabulary of a specific text or master.
+
+   • Prioritizes cuts and guards that are shared across historical traditions.
+
+   • Aims to strengthen movement, discipline, and muscle memory rather than teach specific sequences.
+
+   • Accommodates newcomers more than experienced practitioners (although experienced practitioners could find this app useful for solo practice).
+
+While every historical text has its own unique approach and emphasis, nearly all of those texts share certain commonalities. For example, the following images (scroll to the right to see more) range in time period from the 1400s to modern day, come from Italian, German, British, Polish, Japanese, and American instructional texts, and apply to longsword, dussak, sabre, and other weapons:

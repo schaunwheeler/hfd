@@ -8,12 +8,15 @@ from kivy.uix.image import Image
 from kivy.core.audio import SoundLoader
 from kivy.metrics import dp
 from kivy.properties import StringProperty
+from kivy.uix.carousel import Carousel
+from kivy.uix.image import AsyncImage
 
 from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
 from kivy.graphics import Rectangle, Color, Line, Ellipse
 from kivy.storage.jsonstore import JsonStore
+from kivy.uix.gridlayout import GridLayout
 
 from kivymd.uix.tab import MDTabsBase, MDTabs
 from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
@@ -24,7 +27,6 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.button import MDRoundFlatButton, MDRaisedButton
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.selectioncontrol import MDCheckbox
-from kivymd.uix.slider import MDSlider
 
 
 class Tab(MDFloatLayout, MDTabsBase):
@@ -101,10 +103,10 @@ class DropdownClass(MDRoundFlatButton):
 
 class WrappedLabel(MDLabel):
     # Based on https://stackoverflow.com/a/58227983
-    def __init__(self, **kwargs):
+    def __init__(self, width_padding=0, **kwargs):
         super().__init__(**kwargs)
         self.bind(
-            width=lambda *x: self.setter('text_size')(self, (self.width, None)),
+            width=lambda *x: self.setter('text_size')(self, (self.width - width_padding, None)),
             texture_size=lambda *x: self.setter('height')(self, self.texture_size[1])
         )
 
@@ -129,8 +131,6 @@ class CircleWidget(Widget):
         center_x, center_y = self.center
         x = self.width / 2
         y = self.height / 2
-        part_x = x * 0.66
-        part_y = y * 0.66
 
         offset = min(self.width * 0.05, self.height * 0.05)
 
@@ -627,8 +627,6 @@ class HistoricalFencingDrillsApp(MDApp):
         combo_wait = float(self.combo_wait_widget.text)
         m, s = self.total_time_widget.text.split(':')
         total_time = int(m) * 60 + int(s)
-        min_size = int(self.min_combo_length_widget.text)
-        max_size = int(self.max_combo_length_widget.text)
         combo_expand = True if self.combo_expand_widget.text == 'ON' else False
         combo_repeat = True if self.combo_repeat_widget.text == 'ON' else False
 
@@ -745,7 +743,7 @@ class HistoricalFencingDrillsApp(MDApp):
         self.mode_widget = DropdownClass(
             menu_items=[
                 'Pre-programmed',
-                'Manual', 'Manual (cuts only)', 'Manual (guards only)'
+                'Manual', 'Manual (cuts)', 'Manual (guards)'
             ],
             truncate_label=None,
             position='center',
@@ -894,20 +892,20 @@ class HistoricalFencingDrillsApp(MDApp):
         ):
             tab = Tab(title=tab_label)
             if tab_label == 'General':
-                table = container
+                tab.add_widget(container)
             elif tab_label == 'Cut Transitions':
-                table = MDGridLayout(rows=19, cols=10, padding=dp(20))
+                container = MDGridLayout(rows=19, cols=10, padding=dp(20))
                 for b in (['', ] + self.cuts):
                     lab = MDLabel(
                         text=b,
                         font_style='Caption',
                         halign='center'
                     )
-                    table.add_widget(lab)
+                    container.add_widget(lab)
 
                 for a in self.cuts + self.guards:
                     lab = MDLabel(text=a, font_style='Caption', valign='center')
-                    table.add_widget(lab)
+                    container.add_widget(lab)
                     for b in self.cuts:
                         transition_string = f'{a}|{b}'
                         lab = MDCheckbox(
@@ -919,21 +917,21 @@ class HistoricalFencingDrillsApp(MDApp):
                         lab.ids['transition'] = transition_string
                         lab.bind(active=self._set_transition)
                         self.cut_checkboxes[transition_string] = lab
-                        table.add_widget(lab)
+                        container.add_widget(lab)
 
             elif tab_label == 'Guard Transitions':
-                table = MDGridLayout(rows=19, cols=10, padding=dp(20))
+                container = MDGridLayout(rows=19, cols=10, padding=dp(20))
                 for b in (['', ] + self.guards):
                     lab = MDLabel(
                         text=b,
                         font_style='Caption',
                         halign='center'
                     )
-                    table.add_widget(lab)
+                    container.add_widget(lab)
 
                 for a in self.cuts + self.guards:
                     lab = MDLabel(text=a, font_style='Caption', valign='center')
-                    table.add_widget(lab)
+                    container.add_widget(lab)
                     for b in self.guards:
                         transition_string = f'{a}|{b}'
                         lab = MDCheckbox(
@@ -945,7 +943,7 @@ class HistoricalFencingDrillsApp(MDApp):
                         lab.ids['transition'] = transition_string
                         lab.bind(active=self._set_transition)
                         self.guard_checkboxes[transition_string] = lab
-                        table.add_widget(lab)
+                        container.add_widget(lab)
 
             if tab_label != 'General':
                 layout = MDBoxLayout(
@@ -958,12 +956,11 @@ class HistoricalFencingDrillsApp(MDApp):
                     on_press=self._reset_transition_defaults
                 )
 
-                layout.add_widget(table)
+                layout.add_widget(container)
                 layout.add_widget(button)
 
                 tab.add_widget(layout)
-            else:
-                tab.add_widget(table)
+
             self.tabs.add_widget(tab)
         self._disable_tabs()
         return self.tabs
@@ -1003,7 +1000,6 @@ class HistoricalFencingDrillsApp(MDApp):
 
     def store_new_value(self, widget, text):
         key = widget.ids['title']
-        a, b = None, None
         if key.upper() == 'Minimum combo:':
             a = self.min_combo_length_widget.text
             b = self.max_combo_length_widget.text
@@ -1073,7 +1069,7 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return container
 
-    def change_value(self, widget, text):
+    def change_value(self, _, text):
         self.call_diagram.pointer_position_code = text
         self.call_diagram.update_lines()
 
@@ -1083,59 +1079,81 @@ class HistoricalFencingDrillsApp(MDApp):
             do_scroll_x=False
         )
 
-        from kivy.uix.gridlayout import GridLayout
         self.container = GridLayout(
-            cols=1, spacing=10, size_hint_x=1, size_hint_y=None
+            cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None
         )
         self.container.bind(minimum_height=self.container.setter('height'))
 
-        self.paragraph1 = WrappedLabel(
-            text=(
-                "In the 1560s, Joachim Meyer created a manuscript "
-                "for one of his private students, providing instruction "
-                "in longsword, dussack, and side sword. Though less "
-                "extensive than Meyer's later 1570 publication, the early manuscript "
-                "contained several cutting diagrams that serve as a useful basis"
-                "for constructing individual drills."
-            ),
-            halign='center',
-            font_style='Body1',
+        self.header = WrappedLabel(
+            text='Historical Fencing Drills',
+            halign='left',
+            font_style='H3',
             size_hint_y=None,
             size_hint_x=1,
-            text_size=(None, None)
+            text_size=(None, None),
+            width_padding=20
         )
 
-        self.image1 = Image(
-            source='assets/images/meyer_ms.jpg',
-            allow_stretch=True,
-            keep_ratio=True,
+        with open('assets/texts/paragraph1.txt', 'r') as f:
+            self.paragraph1 = WrappedLabel(
+                text=f.read(),
+                halign='left',
+                font_style='Body1',
+                size_hint_y=None,
+                size_hint_x=1,
+                text_size=(None, None),
+                width_padding=20
+            )
+
+        image_files = [
+            'us-army-01.png',
+            'The Segno of Achille Marozzo, 1536 .png',
+            'The New Sword Exercise for Infantry by Richard F. Burton, 1876.png',
+            'The Happo Giri (Eight Cuts) of Toyama Ryu Nakamura-ha.png',
+            'Signo della Spada from Filippo Vadi’s De Arte Gladiatoria (c.1482 – 1487).jpg',
+            'Salvatore Fabris, 1606.png',
+            'Polish saber cutting diagram from Michal Starzewski, 1830.png',
+            'Meyer_cutting_lines 1570 dussack.gif',
+            'meyer 1560 manual.png',
+            'Le Marchant’s saber manual, 19th c.png',
+            'Joachim Meyers segno of 1570.png',
+            'Fiore dei Liberi Getty Segno.png',
+            'Angelo’s 1845 cutting diagram.png'
+        ]
+
+        self.image1 = Carousel(
+            direction='right',
             size_hint_y=None,
             size_hint_x=None,
             width=self.container.width,
-            height=self.container.width,
+            height=self.container.width
         )
+        for src in image_files:
+            image = AsyncImage(
+                source=f'assets/images/{src}',
+                allow_stretch=True,
+                keep_ratio=True,
+                size_hint_y=None,
+                size_hint_x=None,
+                width=self.container.width,
+                height=self.container.width,
+            )
+            self.image1.add_widget(image)
+            self.image1.ids[src] = image
 
-        self.paragraph2 = WrappedLabel(
-            text=(
-                "This app adapts those cutting diagrams to provide audio "
-                "callouts of cut and thrust combinations to serve for individual "
-                "training. The app assumes a simplified system of eight cuts and "
-                "9 thrusts. The cuts are illustrated here, witih the cut begining "
-                "at the position of its respective number and continuing along the "
-                "line that extends from that number. This differs from the user "
-                "interface, where the yellow dot marks where the cut should end. The"
-                "one addition 'cut' - the '9' - is actually a thrust, to center of"
-                "the body."
-            ),
-            halign='center',
-            font_style='Body1',
-            size_hint_y=None,
-            size_hint_x=1,
-            text_size=(None, None)
-        )
+        with open('assets/texts/paragraph2.txt', 'r') as f:
+            self.paragraph2 = WrappedLabel(
+                text=f.read(),
+                halign='left',
+                font_style='Body1',
+                size_hint_y=None,
+                size_hint_x=1,
+                text_size=(None, None),
+                width_padding=20
+            )
 
         self.image2 = Image(
-            source='assets/images/cut_patterns.png',
+            source='assets/images/cut_and_thrust_abbreviations.png',
             allow_stretch=True,
             keep_ratio=True,
             size_hint_y=None,
@@ -1143,34 +1161,19 @@ class HistoricalFencingDrillsApp(MDApp):
             width=self.container.width,
             height=self.container.width
         )
+        with open('assets/texts/paragraph3.txt', 'r') as f:
+            self.paragraph3 = WrappedLabel(
+                text=f.read(),
+                markup=True,
+                halign='left',
+                font_style='Body1',
+                size_hint_y=None,
+                size_hint_x=1,
+                text_size=(None, None),
+                width_padding=20
+            )
 
-        self.paragraph3 = WrappedLabel(
-            text=(
-                "The app provides multiple ways to adjust the training program:\n\n"
-                "   \u2022 [b]Round duration (minutes):[/b] the amount of time "
-                "you want to train for.\n\n"
-                "   \u2022 [b]Pause between calls (seconds):[/b] the number of seconds "
-                "to wait calling out the next cut or thrust.\n\n"
-                "   \u2022 [b]Pause between combos (seconds):[/b] the number of seconds "
-                "to wait after a combination of multiple cuts and/or thrusts have been called out.\n\n"
-                "   \u2022 [b]Combo size:[/b] this indicates the numbers of unique"
-                "drill combinations the app has available for each length. For example, if "
-                "'4' is selected, then each drill will involve four cuts.\n\n"
-                "   \u2022 [b]Repeat full combo at end:[/b] the number of times to repeat "
-                "the combo before moving on to the next one. If progressive expansion is on, "
-                "then the repetition will only apply to the full combo, not each progressive subset.\n\n"
-                "   \u2022 [b]Progressively expand combos:[/b] if ON, the app will "
-                " start by calling out hte first two moves of the combo, then expand to "
-                " three, then four, and so on, until the full combo is recited.\n\n"
-            ),
-            markup=True,
-            halign='center',
-            font_style='Body1',
-            size_hint_y=None,
-            size_hint_x=1,
-            text_size=(None, None)
-        )
-
+        self.container.add_widget(self.header)
         self.container.add_widget(self.paragraph1)
         self.container.add_widget(self.image1)
         self.container.add_widget(self.paragraph2)
@@ -1183,9 +1186,12 @@ class HistoricalFencingDrillsApp(MDApp):
 
     def set_dims(self, *_):
         width = Window.width
-        adjusted_width = width  # * 0.66
+        adjusted_width = width - 20  # * 0.66
         self.image1.width = adjusted_width
-        self.image1.height = adjusted_width / self.image1.image_ratio
+        self.image1.height = adjusted_width
+        for k, image in self.image1.ids.items():
+            image.width = adjusted_width
+            image.height = adjusted_width
         self.image2.width = adjusted_width
         self.image2.height = adjusted_width / self.image2.image_ratio
 
