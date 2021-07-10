@@ -3,465 +3,29 @@ import math
 from functools import partial
 
 from kivymd.app import MDApp
+from kivy.core.window import Window
 from kivy.clock import Clock
-from kivy.uix.image import Image
 from kivy.core.audio import SoundLoader
 from kivy.metrics import dp
-from kivy.properties import StringProperty
-from kivy.uix.carousel import Carousel
-from kivy.uix.image import AsyncImage
-
-from kivy.uix.scrollview import ScrollView
-from kivy.core.window import Window
-from kivy.uix.widget import Widget
-from kivy.graphics import Rectangle, Color, Line, Ellipse
 from kivy.storage.jsonstore import JsonStore
-from kivy.uix.gridlayout import GridLayout
 
-from kivymd.uix.tab import MDTabsBase, MDTabs
-from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.scrollview import ScrollView
+from kivy.graphics import Rectangle, Color
+from kivy.uix.image import Image
+
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.tab import MDTabs
+from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
 from kivymd.uix.label import MDLabel
-from kivymd.uix.button import MDRoundFlatButton, MDRaisedButton
-from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.selectioncontrol import MDCheckbox
 
-
-class Tab(MDFloatLayout, MDTabsBase):
-    """Class implementing content for a tab."""
-    content_text = StringProperty("")
-
-
-class DropdownClass(MDRoundFlatButton):
-
-    def __init__(
-            self,
-            menu_items,
-            truncate_label=None,
-            width_mult=None,
-            position='auto',
-            **kwargs
-    ):
-        super().__init__(**kwargs)
-
-        self.truncate_label = truncate_label
-        if width_mult is None:
-            n_char = max(len(x) for x in menu_items)
-            if n_char < 3:
-                width_mult = 1
-            elif n_char < 10:
-                width_mult = 2
-            else:
-                width_mult = 4
-
-        menu_items = [
-            {
-                "viewclass": "OneLineListItem",
-                "text": f"{v}",
-                "height": dp(42),
-                "on_release": lambda x=f"{v}": self.set_item(x)
-            } for v in menu_items
-        ]
-        self.current_item = None
-        self.on_press = self.open_menu
-
-        self.menu = MDDropdownMenu(
-            caller=self,
-            items=menu_items,
-            position=position,
-            width_mult=width_mult,
-            max_height=dp(42 * 3)
-        )
-        self.menu.bind()
-        self.set_item(menu_items[0]['text'])
-
-    def set_item(self, text_item):
-        if text_item not in [d['text'] for d in self.menu.items]:
-            raise ValueError('Target text not in menu.')
-        self.current_item = text_item
-        if self.truncate_label is not None:
-            if len(text_item) > self.truncate_label:
-                i = self.truncate_label - 3
-                if i < 1:
-                    i = 1
-                self.text = text_item[:i] + '...'
-            else:
-                self.text = text_item
-        else:
-            self.text = text_item
-        self.menu.dismiss()
-
-    def open_menu(self, *_):
-        self.menu.open()
-        text_list = [d['text'] for d in self.menu.items]
-        n_items = len(text_list)
-        ind = text_list.index(self.current_item)
-        self.menu.ids.md_menu.scroll_y = 1.0 - (ind / n_items)
-
-
-class WrappedLabel(MDLabel):
-    # Based on https://stackoverflow.com/a/58227983
-    def __init__(self, width_padding=0, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(
-            width=lambda *x: self.setter('text_size')(self, (self.width - width_padding, None)),
-            texture_size=lambda *x: self.setter('height')(self, self.texture_size[1])
-        )
-
-
-class CircleWidget(Widget):
-    def __init__(self, **kwargs):
-        super(CircleWidget, self).__init__(**kwargs)
-
-        self.pointer_position_code = None
-        self.ignore_vals = (None, 'H', 'rH', 'L', 'rL', 'M', 'rM', 'G', 'rG', 'T')
-
-        with self.canvas:
-            self.color = Color(240, 255, 0, 1)
-            self.circle = Ellipse(
-                pos=self.center,
-                size=(self.width * 0.05, self.height * 0.05)
-            )
-
-        self.bind(pos=self.update_circle, size=self.update_circle)
-
-    def calculate_coordinates(self, *_):
-        center_x, center_y = self.center
-        x = self.width / 2
-        y = self.height / 2
-
-        offset = min(self.width * 0.05, self.height * 0.05)
-
-        if self.pointer_position_code in self.ignore_vals:
-            return center_x - offset, center_y - offset
-        elif self.pointer_position_code == '9':
-            return center_x - offset, center_y - offset
-        elif self.pointer_position_code == '1':
-            return center_x - x - offset, center_y - y - offset
-        elif self.pointer_position_code == '2':
-            return center_x + x - offset, center_y - y - offset
-        elif self.pointer_position_code == '3':
-            return center_x - x - offset, center_y + y - offset
-        elif self.pointer_position_code == '4':
-            return center_x + x - offset, center_y + y - offset
-        elif self.pointer_position_code == '5':
-            return center_x - x - offset, center_y - offset
-        elif self.pointer_position_code == '6':
-            return center_x + x - offset, center_y - offset
-        elif self.pointer_position_code == '7':
-            return center_x - offset, center_y - y - offset
-        elif self.pointer_position_code == '8':
-            return center_x - offset, center_y + y - offset
-        else:
-            raise ValueError('Invalid pointer_position_code.')
-
-    def update_circle(self, *_):
-        offset = min(self.width * 0.05, self.height * 0.05)
-        self.circle.pos = self.calculate_coordinates()
-        self.circle.size = (offset * 2, offset * 2)
-
-        if self.pointer_position_code in self.ignore_vals:
-            self.color.rgba = (0, 0, 0, 0)
-        else:
-            self.color.rgba = (240, 255, 0, 1)
-
-
-class RectangleWidget(Widget):
-    def __init__(self, **kwargs):
-        super(RectangleWidget, self).__init__(**kwargs)
-
-        self.pointer_position_code = '9'
-
-        with self.canvas:
-            Color(0, 0, 0, 0.1)
-            self.rect1 = Rectangle(
-                pos=self.center,
-                size=(-self.width / 2., self.height / 2.)
-            )
-
-            Color(0, 0, 0, 0.1)
-            self.rect2 = Rectangle(
-                pos=self.center,
-                size=(self.width / 2., self.height / 2.)
-            )
-
-            Color(0, 0, 0, 0.1)
-            self.rect3 = Rectangle(
-                pos=self.center,
-                size=(-self.width / 2., -self.height / 2.)
-            )
-
-            Color(0, 0, 0, 0.1)
-            self.rect4 = Rectangle(
-                pos=self.center,
-                size=(self.width / 2., -self.height / 2.)
-            )
-
-            self.line_1_4_color = Color(1, 1, 1, 0.9)
-            self.line_1_4 = Line(
-                points=[0, self.height, self.width, 0],
-                width=2
-            )
-            self.line_2_3_color = Color(1, 1, 1, 0.9)
-            self.line_2_3 = Line(
-                points=[0, self.height, self.width, 0],
-                width=2
-            )
-            self.line_5_6_color = Color(1, 1, 1, 0.9)
-            self.line_5_6 = Line(
-                points=[self.width, self.height / 2, 0, self.height / 2],
-                width=2
-            )
-            self.line_7_8_color = Color(1, 1, 1, 0.9)
-            self.line_7_8 = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2
-            )
-
-            self.line_h_color = Color(1, 1, 1, 0.0)
-            self.line_h = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2,
-                cap='square'
-            )
-
-            self.line_g_color = Color(1, 1, 1, 0.0)
-            self.line_g = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2,
-                cap='square'
-            )
-
-            self.line_rh_color = Color(1, 1, 1, 0.0)
-            self.line_rh = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2,
-                cap='square'
-            )
-
-            self.line_rg_color = Color(1, 1, 1, 0.0)
-            self.line_rg = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2,
-                cap='square'
-            )
-
-            self.line_l_color = Color(1, 1, 1, 0.0)
-            self.line_l = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2,
-                cap='square'
-            )
-
-            self.line_m_color = Color(1, 1, 1, 0.0)
-            self.line_m = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2,
-                cap='square'
-            )
-
-            self.line_rl_color = Color(1, 1, 1, 0.0)
-            self.line_rl = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2,
-                cap='square'
-            )
-
-            self.line_rm_color = Color(1, 1, 1, 0.0)
-            self.line_rm = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2,
-                cap='square'
-            )
-
-            self.line_t_color = Color(1, 1, 1, 0.0)
-            self.line_t = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2,
-                cap='square'
-            )
-
-        self.bind(pos=self.update_rect, size=self.update_rect)
-        self.bind(pos=self.update_lines, size=self.update_lines)
-
-    def update_rect(self, *_):
-        self.rect1.pos = self.center
-        self.rect1.size = (-self.width / 2., self.height / 2.)
-
-        self.rect2.pos = self.center
-        self.rect2.size = (self.width / 2., self.height / 2.)
-
-        self.rect3.pos = self.center
-        self.rect3.size = (-self.width / 2., -self.height / 2.)
-
-        self.rect4.pos = self.center
-        self.rect4.size = (self.width / 2., -self.height / 2.)
-
-        self.line_1_4.points = [
-            self.center[0] + (self.width / 2),
-            self.center[1] + (self.height / 2),
-            self.center[0] - (self.width / 2),
-            self.center[1] - (self.height / 2)
-        ]
-
-        self.line_2_3.points = [
-            self.center[0] - (self.width / 2),
-            self.center[1] + (self.height / 2),
-            self.center[0] + (self.width / 2),
-            self.center[1] - (self.height / 2)
-        ]
-
-        self.line_5_6.points = [
-            self.center[0] + (self.width / 2),
-            self.center[1],
-            self.center[0] - (self.width / 2),
-            self.center[1]
-        ]
-
-        self.line_7_8.points = [
-            self.center[0],
-            self.center[1] + (self.height / 2),
-            self.center[0],
-            self.center[1] - (self.height / 2)
-        ]
-
-        self.line_h.points = [
-            self.center[0] + (self.width / 2),
-            self.center[1] + (self.height * 0.25),
-            self.center[0] - (self.width * 0.4),
-            self.center[1] + (self.height * 0.5)
-        ]
-
-        self.line_g.points = [
-            self.center[0] + (self.width / 2),
-            self.center[1] + (self.height * 0.5),
-            self.center[0] - (self.width * 0.25),
-            self.center[1] + (self.height * 0.1)
-        ]
-
-        self.line_rh.points = [
-            self.center[0] - (self.width / 2),
-            self.center[1] + (self.height * 0.25),
-            self.center[0] + (self.width * 0.4),
-            self.center[1] + (self.height * 0.5)
-        ]
-
-        self.line_rg.points = [
-            self.center[0] - (self.width / 2),
-            self.center[1] + (self.height * 0.5),
-            self.center[0] + (self.width * 0.25),
-            self.center[1] + (self.height * 0.1)
-        ]
-
-        self.line_m.points = [
-            self.center[0] + (self.width / 2),
-            self.center[1] - (self.height * 0.1),
-            self.center[0] - (self.width * 0.4),
-            self.center[1] + (self.height * 0.4)
-        ]
-
-        self.line_rm.points = [
-            self.center[0] - (self.width / 2),
-            self.center[1] - (self.height * 0.1),
-            self.center[0] + (self.width * 0.4),
-            self.center[1] + (self.height * 0.4)
-        ]
-
-        self.line_l.points = [
-            self.center[0] + (self.width / 2),
-            self.center[1] - (self.height * 0.1),
-            self.center[0] - (self.width * 0.4),
-            self.center[1] - (self.height * 0.4)
-        ]
-
-        self.line_rl.points = [
-            self.center[0] - (self.width / 2),
-            self.center[1] - (self.height * 0.1),
-            self.center[0] + (self.width * 0.4),
-            self.center[1] - (self.height * 0.4)
-        ]
-
-        self.line_t.points = [
-            self.center[0] - (self.width * 0.4),
-            self.center[1] - (self.height * 0.1),
-            self.center[0] - (self.width * 0.5),
-            self.center[1] - (self.height * 0.4)
-        ]
-
-    def update_lines(self, *_):
-        self.line_1_4_color.rgba = (1, 1, 1, 0.9)
-        self.line_2_3_color.rgba = (1, 1, 1, 0.9)
-        self.line_5_6_color.rgba = (1, 1, 1, 0.9)
-        self.line_7_8_color.rgba = (1, 1, 1, 0.9)
-        self.line_h_color.rgba = (1, 1, 1, 0.0)
-        self.line_g_color.rgba = (1, 1, 1, 0.0)
-        self.line_rh_color.rgba = (1, 1, 1, 0.0)
-        self.line_rg_color.rgba = (1, 1, 1, 0.0)
-        self.line_m_color.rgba = (1, 1, 1, 0.0)
-        self.line_l_color.rgba = (1, 1, 1, 0.0)
-        self.line_rm_color.rgba = (1, 1, 1, 0.0)
-        self.line_rl_color.rgba = (1, 1, 1, 0.0)
-        self.line_t_color.rgba = (1, 1, 1, 0.0)
-
-        self.line_1_4.width = 2
-        self.line_2_3.width = 2
-        self.line_5_6.width = 2
-        self.line_7_8.width = 2
-        self.line_h.width = 2
-        self.line_g.width = 2
-        self.line_rh.width = 2
-        self.line_rg.width = 2
-        self.line_m.width = 2
-        self.line_l.width = 2
-        self.line_rm.width = 2
-        self.line_rl.width = 2
-        self.line_t.width = 2
-
-        if self.pointer_position_code in ('1', '4'):
-            self.line_1_4_color.rgba = (240, 255, 0, 1)
-            self.line_1_4.width = 10
-        elif self.pointer_position_code in ('2', '3'):
-            self.line_2_3_color.rgba = (240, 255, 0, 1)
-            self.line_2_3.width = 10
-        elif self.pointer_position_code in ('5', '6'):
-            self.line_5_6_color.rgba = (240, 255, 0, 1)
-            self.line_5_6.width = 10
-        elif self.pointer_position_code in ('7', '8'):
-            self.line_7_8_color.rgba = (240, 255, 0, 1)
-            self.line_7_8.width = 10
-        elif self.pointer_position_code == 'H':
-            self.line_h_color.rgba = (250, 0, 0, 1)
-            self.line_h.width = 10
-        elif self.pointer_position_code == 'G':
-            self.line_g_color.rgba = (250, 0, 0, 1)
-            self.line_g.width = 10
-        elif self.pointer_position_code == 'rH':
-            self.line_rh_color.rgba = (250, 0, 0, 1)
-            self.line_rh.width = 10
-        elif self.pointer_position_code == 'rG':
-            self.line_rg_color.rgba = (250, 0, 0, 1)
-            self.line_rg.width = 10
-        elif self.pointer_position_code == 'M':
-            self.line_m_color.rgba = (250, 0, 0, 1)
-            self.line_m.width = 10
-        elif self.pointer_position_code == 'L':
-            self.line_l_color.rgba = (250, 0, 0, 1)
-            self.line_l.width = 10
-        elif self.pointer_position_code == 'rM':
-            self.line_rm_color.rgba = (250, 0, 0, 1)
-            self.line_rm.width = 10
-        elif self.pointer_position_code == 'rL':
-            self.line_rl_color.rgba = (250, 0, 0, 1)
-            self.line_rl.width = 10
-        elif self.pointer_position_code == 'T':
-            self.line_t_color.rgba = (250, 0, 0, 1)
-            self.line_t.width = 10
-        elif self.pointer_position_code in (None, '9'):
-            pass
-        else:
-            raise ValueError(f'Invalid pointer_position_code: {self.pointer_position_code}')
+from utils import clock_time_from_seconds
+from components import DropdownClass, Tab, WrappedLabel, ImageCard
+from graphics import CircleWidget, RectangleWidget
 
 
 class HistoricalFencingDrillsApp(MDApp):
@@ -514,7 +78,7 @@ class HistoricalFencingDrillsApp(MDApp):
         )
         bottom_navigation_item3 = MDBottomNavigationItem(
             name='screen 3',
-            text='Help',
+            text='About',
             icon='book',
             on_tab_press=self.open_screen3
         )
@@ -534,10 +98,6 @@ class HistoricalFencingDrillsApp(MDApp):
         parent.add_widget(bottom_navigation)
 
         return parent
-
-    def open_screen3(self, *_):
-        self.cancel_all_events()
-        self.set_dims()
 
     def schedule_calls(self, _):
         for row in self._create_buffer():
@@ -606,20 +166,6 @@ class HistoricalFencingDrillsApp(MDApp):
             raise ValueError('Valid values are `Pre-programmed` and `Custom`.')
 
         return patterns
-
-    def _update_screen2(self, row, _):
-        call_time, call_length, time_text, call_text, full_call_text, play_sound = row
-        self.time_label.text = time_text
-        self.call_label.text = call_text
-        self.full_call_label.text = full_call_text
-
-        if play_sound:
-            self.call_diagram.pointer_position_code = call_text
-            self.call_diagram.update_lines()
-            self.call_pointer.pointer_position_code = call_text
-            self.call_pointer.update_circle()
-
-            play_sound.play()
 
     def _create_buffer(self):
 
@@ -899,18 +445,25 @@ class HistoricalFencingDrillsApp(MDApp):
                     lab = MDLabel(
                         text=b,
                         font_style='Caption',
-                        halign='center'
+                        halign='center',
+                        size_hint=(1 / 10, 1 / 19),
+                        pos_hint={'center_x': 0.5, 'center_y': 0.5},
                     )
                     container.add_widget(lab)
 
                 for a in self.cuts + self.guards:
-                    lab = MDLabel(text=a, font_style='Caption', valign='center')
+                    lab = MDLabel(
+                        text=a,
+                        font_style='Caption',
+                        valign='center',
+                        size_hint=(1 / 10, 1 / 19),
+                        pos_hint={'center_x': 0.5, 'center_y': 0.5}
+                    )
                     container.add_widget(lab)
                     for b in self.cuts:
                         transition_string = f'{a}|{b}'
                         lab = MDCheckbox(
-                            size_hint=(None, None),
-                            size=("18dp", "18dp"),
+                            size_hint=(1 / 10, 1 / 19),
                             pos_hint={'center_x': 0.5, 'center_y': 0.5},
                             active=self.transitions.get(transition_string)['value']
                         )
@@ -925,18 +478,26 @@ class HistoricalFencingDrillsApp(MDApp):
                     lab = MDLabel(
                         text=b,
                         font_style='Caption',
-                        halign='center'
+                        halign='center',
+                        size_hint=(1 / 10, 1 / 19),
+                        pos_hint={'center_x': 0.5, 'center_y': 0.5},
+
                     )
                     container.add_widget(lab)
 
                 for a in self.cuts + self.guards:
-                    lab = MDLabel(text=a, font_style='Caption', valign='center')
+                    lab = MDLabel(
+                        text=a,
+                        font_style='Caption',
+                        valign='center',
+                        size_hint=(1 / 10, 1 / 19),
+                        pos_hint={'center_x': 0.5, 'center_y': 0.5}
+                    )
                     container.add_widget(lab)
                     for b in self.guards:
                         transition_string = f'{a}|{b}'
                         lab = MDCheckbox(
-                            size_hint=(None, None),
-                            size=("18dp", "18dp"),
+                            size_hint=(1 / 10, 1 / 19),
                             pos_hint={'center_x': 0.5, 'center_y': 0.5},
                             active=self.transitions.get(transition_string)['value']
                         )
@@ -951,8 +512,8 @@ class HistoricalFencingDrillsApp(MDApp):
                 )
                 button = MDRaisedButton(
                     text='Restore Defaults',
+                    size_hint=(None, None),
                     pos_hint={'center_x': 0.5, 'center_y': 0.5},
-                    size_hint_x=1.0,
                     on_press=self._reset_transition_defaults
                 )
 
@@ -964,55 +525,6 @@ class HistoricalFencingDrillsApp(MDApp):
             self.tabs.add_widget(tab)
         self._disable_tabs()
         return self.tabs
-
-    def _reset_transition_defaults(self, *_):
-        for k, d in self.transitions.find():
-            value = d['value']
-            default = d['default']
-
-            change_cuts = self.current_tab == 'Cut Transitions'
-            in_cuts = k in self.cut_checkboxes
-            is_different = value != default
-
-            if change_cuts and in_cuts and is_different:
-                self.cut_checkboxes[k].active = default
-            elif (not change_cuts) and (not in_cuts) and is_different:
-                self.guard_checkboxes[k].active = default
-
-    def _set_transition(self, element, value):
-        key = element.ids['transition']
-        d = self.transitions.get(key)
-        d['value'] = value
-        self.transitions.put(key, **d)
-
-    def _switch_tabs(self, tabs, tab, label, tab_text):
-
-        self.current_tab = tab_text
-
-    def _disable_tabs(self):
-        manual_options = ('Manual', 'Manual (cuts only)', 'Manual (guards only)')
-        flag = self.mode_widget.text not in manual_options
-        for tab in self.tabs.get_slides():
-            if tab.title != 'General':
-                tab.tab_label.disabled_color = [0.0, 0.0, 0.0, 0.1]
-                tab.tab_label.disabled = flag
-                tab.disabled = flag
-
-    def store_new_value(self, widget, text):
-        key = widget.ids['title']
-        if key.upper() == 'Minimum combo:':
-            a = self.min_combo_length_widget.text
-            b = self.max_combo_length_widget.text
-            if int(a) > int(b):
-                self.max_combo_length_widget.set_item(a)
-        if key.upper() == 'Maximum combo:':
-            a = self.min_combo_length_widget.text
-            b = self.max_combo_length_widget.text
-            if int(b) < int(a):
-                self.min_combo_length_widget.set_item(b)
-        if key == 'Mode:':
-            self._disable_tabs()
-        self.settings.put(key, text=text)
 
     def _create_screen_2(self):
         container = MDFloatLayout()
@@ -1069,10 +581,6 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return container
 
-    def change_value(self, _, text):
-        self.call_diagram.pointer_position_code = text
-        self.call_diagram.update_lines()
-
     def _create_screen_3(self):
 
         self.scroll_container = ScrollView(
@@ -1105,41 +613,31 @@ class HistoricalFencingDrillsApp(MDApp):
                 width_padding=20
             )
 
-        image_files = [
-            'us-army-01.png',
-            'The Segno of Achille Marozzo, 1536 .png',
-            'The New Sword Exercise for Infantry by Richard F. Burton, 1876.png',
-            'The Happo Giri (Eight Cuts) of Toyama Ryu Nakamura-ha.png',
-            'Signo della Spada from Filippo Vadi’s De Arte Gladiatoria (c.1482 – 1487).jpg',
-            'Salvatore Fabris, 1606.png',
-            'Polish saber cutting diagram from Michal Starzewski, 1830.png',
-            'Meyer_cutting_lines 1570 dussack.gif',
-            'meyer 1560 manual.png',
-            'Le Marchant’s saber manual, 19th c.png',
-            'Joachim Meyers segno of 1570.png',
-            'Fiore dei Liberi Getty Segno.png',
-            'Angelo’s 1845 cutting diagram.png'
-        ]
+        image_files = {
+            'fiore_getty.png': "[i]The Segno della Spada[/i] of Fiore dei Libieri, 1409.",
+            'vadi_gladiatoria.jpg': "Filippo Vadi’s [i]De Arte Gladiatoria[/i], c.1482",
+            'marozzo_opera.png': "Achille Marozzo's [i]Opera Nova[/i], 1536.",
+            'meyer_1560_end.png': "Cutting drill diagrams from the end of Joachim Meyer's first manual, 1561.",
+            'meyer_1570_longsword.png': "Longsword cut patterns from Joachim Meyer's second manual, 1570.",
+            'meyer_1570_dussack.gif': "Instruction for Dussak from Joachim Meyer's second manual, 1570.",
+            'fabris_science.png': "Salvatore Fabris's [i]Science and Practice of Arms[/i], 1606.",
+            'marchant_rules.png': "Le Marchant’s [i]Rules and Regulations for the Sword Exercise of the Cavalry[/i], 1796.",
+            'starzewski_fencing.png': "Michal Starzewski's [i]On Fencing[/i], 1830.",
+            'angelo_infantry.png': "Angelo the Younger's [i]Infantry Sword Exercises[/i], 1845.",
+            'burton_exercises.png': "Richard F. Burton's [i]The New Sword Exercise for Infantry[/i], 1876.",
+            'happo_giri.png': "[i]The Happo Giri[/i] of Toyama Ryu Nakamura-ha, 1952.",
+            'self_defense.png': "A diagram commonly used in modern self-defense courses.",
+        }
 
-        self.image1 = Carousel(
-            direction='right',
-            size_hint_y=None,
-            size_hint_x=None,
-            width=self.container.width,
-            height=self.container.width
+        self.image1 = ImageCard(
+            image_list=image_files,
+            image_path='assets/images/',
+            orientation="vertical",
+            padding="8dp",
+            size_hint=(None, None),
+            size=("280dp", "180dp"),
+            pos_hint={"center_x": .5, "center_y": .5}
         )
-        for src in image_files:
-            image = AsyncImage(
-                source=f'assets/images/{src}',
-                allow_stretch=True,
-                keep_ratio=True,
-                size_hint_y=None,
-                size_hint_x=None,
-                width=self.container.width,
-                height=self.container.width,
-            )
-            self.image1.add_widget(image)
-            self.image1.ids[src] = image
 
         with open('assets/texts/paragraph2.txt', 'r') as f:
             self.paragraph2 = WrappedLabel(
@@ -1184,14 +682,82 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return self.scroll_container
 
+    def _update_screen2(self, row, _):
+        call_time, call_length, time_text, call_text, full_call_text, play_sound = row
+        self.time_label.text = time_text
+        self.call_label.text = call_text
+        self.full_call_label.text = full_call_text
+
+        if play_sound:
+            self.call_diagram.pointer_position_code = call_text
+            self.call_diagram.update_lines()
+            self.call_pointer.pointer_position_code = call_text
+            self.call_pointer.update_circle()
+
+            play_sound.play()
+
+    def open_screen3(self, *_):
+        self.cancel_all_events()
+        self.set_dims()
+
+    def _reset_transition_defaults(self, *_):
+        for k, d in self.transitions.find():
+            value = d['value']
+            default = d['default']
+
+            change_cuts = self.current_tab == 'Cut Transitions'
+            in_cuts = k in self.cut_checkboxes
+            is_different = value != default
+
+            if change_cuts and in_cuts and is_different:
+                self.cut_checkboxes[k].active = default
+            elif (not change_cuts) and (not in_cuts) and is_different:
+                self.guard_checkboxes[k].active = default
+
+    def _set_transition(self, element, value):
+        key = element.ids['transition']
+        d = self.transitions.get(key)
+        d['value'] = value
+        self.transitions.put(key, **d)
+
+    def _switch_tabs(self, tabs, tab, label, tab_text):
+
+        self.current_tab = tab_text
+
+    def _disable_tabs(self):
+        manual_options = ('Manual', 'Manual (cuts only)', 'Manual (guards only)')
+        flag = self.mode_widget.text not in manual_options
+        for tab in self.tabs.get_slides():
+            if tab.title != 'General':
+                tab.tab_label.disabled_color = [0.0, 0.0, 0.0, 0.1]
+                tab.tab_label.disabled = flag
+                tab.disabled = flag
+
+    def store_new_value(self, widget, text):
+        key = widget.ids['title']
+        if key.upper() == 'Minimum combo:':
+            a = self.min_combo_length_widget.text
+            b = self.max_combo_length_widget.text
+            if int(a) > int(b):
+                self.max_combo_length_widget.set_item(a)
+        if key.upper() == 'Maximum combo:':
+            a = self.min_combo_length_widget.text
+            b = self.max_combo_length_widget.text
+            if int(b) < int(a):
+                self.min_combo_length_widget.set_item(b)
+        if key == 'Mode:':
+            self._disable_tabs()
+        self.settings.put(key, text=text)
+
+    def change_value(self, _, text):
+        self.call_diagram.pointer_position_code = text
+        self.call_diagram.update_lines()
+
     def set_dims(self, *_):
         width = Window.width
         adjusted_width = width - 20  # * 0.66
         self.image1.width = adjusted_width
         self.image1.height = adjusted_width
-        for k, image in self.image1.ids.items():
-            image.width = adjusted_width
-            image.height = adjusted_width
         self.image2.width = adjusted_width
         self.image2.height = adjusted_width / self.image2.image_ratio
 
@@ -1205,25 +771,6 @@ class HistoricalFencingDrillsApp(MDApp):
         self.call_pointer.pointer_position_code = None
         self.call_diagram.update_lines()
         self.call_pointer.update_circle()
-
-
-def convert_value(v):
-    if ':' in v:
-        m, s = v.split(':')
-        return int(m) * 60 + int(s)
-    elif '.' in v:
-        return float(v)
-    elif '(' in v:
-        return int(v.split(' (')[0])
-    elif v.isnumeric():
-        return int(v)
-    else:
-        return True if (v == 'ON') else False
-
-
-def clock_time_from_seconds(seconds):
-    m, s = divmod(seconds, 60)
-    return f'{m:02d}:{s:02d}'
 
 
 if __name__ == '__main__':
