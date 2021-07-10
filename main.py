@@ -1228,5 +1228,5 @@ def clock_time_from_seconds(seconds):
 
 if __name__ == '__main__':
 
-    Window.size = (720 / 2, 1280 / 2)
+    # Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
