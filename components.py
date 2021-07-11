@@ -14,30 +14,61 @@ from kivymd.uix.card import MDCard
 from kivy.uix.image import Image
 from kivymd.uix.button import MDIconButton, MDRaisedButton
 from kivymd.uix.selectioncontrol import MDCheckbox
+from kivymd.uix.spinner import MDSpinner
 
 
-class CheckboxTable(MDBoxLayout):
+class CheckboxTable(MDFloatLayout):
 
     def __init__(
             self,
             row_items,
             col_items,
             store,
+            create_table=True,
             **kwargs
     ):
         super().__init__(**kwargs)
 
-        table = MDGridLayout(
+        self.table = MDGridLayout(
             rows=len(row_items) + 1,
             cols=len(col_items) + 1,
-            padding=dp(10)
+            padding=dp(10),
+            size_hint=(0.95, 0.9),
+            pos_hint={'center_x': 0.5, 'center_y': 0.55}
         )
         self.n_rows = len(row_items) + 1
         self.n_cols = len(col_items) + 1
+        self.row_items = row_items
+        self.col_items = col_items
         self.store = store
+        self.table_populated = False
         self.checkbox_dict = dict()
 
-        for col in (['', ] + col_items):
+        button = MDRaisedButton(
+            text='Restore Defaults',
+            size_hint=(0.95, 0.1),
+            pos_hint={'center_x': 0.5, 'center_y': 0.05},
+            on_press=self._reset_transition_defaults
+        )
+
+        self.spinner = MDSpinner(
+            size_hint=(0.25, 0.25),
+            pos_hint={'center_x': 0.5, 'center_y': 0.55},
+            active=False
+        )
+
+        self.add_widget(self.table)
+        self.add_widget(button)
+        self.add_widget(self.spinner)
+
+        if create_table:
+            self.create_table()
+
+    def set_spinner(self, set_at):
+        self.spinner.active = set_at
+
+    def create_table(self):
+        for col in (['', ] + self.col_items):
             lab = MDLabel(
                 text=col,
                 font_style='Caption',
@@ -45,9 +76,9 @@ class CheckboxTable(MDBoxLayout):
                 size_hint=(1 / self.n_cols, 1 / self.n_rows),
                 pos_hint={'center_x': 0.5, 'center_y': 0.5},
             )
-            table.add_widget(lab)
+            self.table.add_widget(lab)
 
-        for row in row_items:
+        for row in self.row_items:
             lab = MDLabel(
                 text=row,
                 font_style='Caption',
@@ -55,9 +86,9 @@ class CheckboxTable(MDBoxLayout):
                 size_hint=(1 / self.n_cols, 1 / self.n_rows),
                 pos_hint={'center_x': 0.5, 'center_y': 0.5}
             )
-            table.add_widget(lab)
+            self.table.add_widget(lab)
 
-            for col in col_items:
+            for col in self.col_items:
                 transition_string = f'{row}|{col}'
                 lab = MDCheckbox(
                     size_hint=(1 / 10, 1 / 19),
@@ -67,17 +98,11 @@ class CheckboxTable(MDBoxLayout):
                 lab.ids['transition'] = transition_string
                 lab.bind(active=self._set_transition)
                 self.checkbox_dict[transition_string] = lab
-                table.add_widget(lab)
+                self.table.add_widget(lab)
 
-        button = MDRaisedButton(
-            text='Restore Defaults',
-            size_hint=(None, None),
-            pos_hint={'center_x': 0.5, 'center_y': 0.5},
-            on_press=self._reset_transition_defaults
-        )
-
-        self.add_widget(table)
-        self.add_widget(button)
+        self.table_populated = True
+        if self.spinner.active:
+            self.spinner.active = False
 
     def _reset_transition_defaults(self, *_):
         for k, d in self.store.find():

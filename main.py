@@ -20,6 +20,7 @@ from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.tab import MDTabs
 from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
 from kivymd.uix.label import MDLabel
+from kivymd.uix.spinner import MDSpinner
 
 from utils import clock_time_from_seconds
 from components import DropdownClass, Tab, WrappedLabel, ImageCard, CheckboxTable
@@ -39,6 +40,10 @@ class HistoricalFencingDrillsApp(MDApp):
         self.max_combo_length_widget = None
         self.mode_widget = None
         self.scroll_container = None
+        self.container = None
+        self.screen3 = None
+        self.screen_3_spinner = None
+        self.screen_3_populated = False
         self.current_tab = 'General'
         self.cuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         self.guards = ['H', 'rH', 'L', 'rL', 'M', 'rM', 'G', 'rG', 'T']
@@ -79,19 +84,23 @@ class HistoricalFencingDrillsApp(MDApp):
             name='screen 3',
             text='About',
             icon='book',
-            on_tab_press=self._create_screen_3
+            on_tab_press=self.open_screen_3
         )
 
         screen1 = self._create_screen_1()
         screen2 = self._create_screen_2()
+        self.screen3 = MDFloatLayout()
 
-        self.scroll_container = ScrollView(
-            do_scroll_x=False
+        self.screen_3_spinner = MDSpinner(
+            size_hint=(0.1, 0.1),
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            active=True
         )
+        self.screen3.add_widget(self.screen_3_spinner)
 
         bottom_navigation_item1.add_widget(screen1)
         bottom_navigation_item2.add_widget(screen2)
-        bottom_navigation_item3.add_widget(self.scroll_container)
+        bottom_navigation_item3.add_widget(self.screen3)
 
         bottom_navigation.add_widget(bottom_navigation_item1)
         bottom_navigation.add_widget(bottom_navigation_item2)
@@ -100,6 +109,10 @@ class HistoricalFencingDrillsApp(MDApp):
         parent.add_widget(bottom_navigation)
 
         return parent
+
+    def open_screen_3(self, *_):
+        self.screen_3_spinner.active = True
+        Clock.schedule_once(lambda x: self._create_screen_3(), 3)
 
     def _create_pattern_generator(self):
         m, s = self.total_time_widget.text.split(':')
@@ -463,6 +476,24 @@ class HistoricalFencingDrillsApp(MDApp):
             tab = Tab(title=tab_label)
             if tab_label == 'General':
                 tab.add_widget(container)
+            elif tab_label == 'Cut Transitions':
+                container = CheckboxTable(
+                    row_items=self.cuts + self.guards,
+                    col_items=self.cuts,
+                    store=self.transitions,
+                    create_table=False
+                )
+                tab.add_widget(container)
+                tab.ids['checkboxes'] = container
+            elif tab_label == 'Guard Transitions':
+                container = CheckboxTable(
+                    row_items=self.cuts + self.guards,
+                    col_items=self.guards,
+                    store=self.transitions,
+                    create_table=False
+                )
+                tab.add_widget(container)
+                tab.ids['checkboxes'] = container
 
             self.tabs.add_widget(tab)
         self._disable_tabs()
@@ -527,13 +558,17 @@ class HistoricalFencingDrillsApp(MDApp):
 
         self.cancel_all_events()
 
-        if len(self.scroll_container.children) > 0:
+        if self.screen_3_populated:
             return
 
+        self.scroll_container = ScrollView(
+            do_scroll_x=False
+        )
         self.container = GridLayout(
             cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None
         )
         self.container.bind(minimum_height=self.container.setter('height'))
+        self.scroll_container.add_widget(self.container)
 
         self.header = WrappedLabel(
             text='Historical Fencing Drills',
@@ -621,7 +656,10 @@ class HistoricalFencingDrillsApp(MDApp):
         self.container.add_widget(self.image2)
         self.container.add_widget(self.paragraph3)
 
-        self.scroll_container.add_widget(self.container)
+        self.screen_3_spinner.active = False
+        self.screen3.remove_widget(self.screen_3_spinner)
+        self.screen3.add_widget(self.scroll_container)
+        self.screen_3_populated = True
 
         adjusted_width = Window.width - 20
         self.image1.width = adjusted_width
@@ -652,23 +690,10 @@ class HistoricalFencingDrillsApp(MDApp):
 
         self.current_tab = tab_text
 
-        if len(tab.children) == 0:
-            if tab_text == 'Cut Transitions':
-                container = CheckboxTable(
-                    row_items=self.cuts + self.guards,
-                    col_items=self.cuts,
-                    store=self.transitions,
-                    orientation='vertical'
-                )
-                tab.add_widget(container)
-            elif tab_text == 'Guard Transitions':
-                container = CheckboxTable(
-                    row_items=self.cuts + self.guards,
-                    col_items=self.guards,
-                    store=self.transitions,
-                    orientation='vertical'
-                )
-                tab.add_widget(container)
+        if 'checkboxes' in tab.ids:
+            if not tab.ids['checkboxes'].table_populated:
+                Clock.schedule_once(lambda dt: tab.ids['checkboxes'].set_spinner(True))
+                Clock.schedule_once(lambda dt: tab.ids['checkboxes'].create_table(), 1)
 
     def _disable_tabs(self):
         manual_options = ('Manual', 'Manual (cuts only)', 'Manual (guards only)')
@@ -713,5 +738,5 @@ class HistoricalFencingDrillsApp(MDApp):
 
 if __name__ == '__main__':
 
-    Window.size = (720 / 2, 1280 / 2)
+    # Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
