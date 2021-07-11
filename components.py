@@ -5,13 +5,93 @@ from kivy.metrics import dp
 
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.tab import MDTabsBase
 from kivymd.uix.button import MDRoundFlatButton
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDCard
 from kivy.uix.image import Image
-from kivymd.uix.button import MDIconButton
+from kivymd.uix.button import MDIconButton, MDRaisedButton
+from kivymd.uix.selectioncontrol import MDCheckbox
+
+
+class CheckboxTable(MDBoxLayout):
+
+    def __init__(
+            self,
+            row_items,
+            col_items,
+            store,
+            **kwargs
+    ):
+        super().__init__(**kwargs)
+
+        table = MDGridLayout(
+            rows=len(row_items) + 1,
+            cols=len(col_items) + 1,
+            padding=dp(10)
+        )
+        self.n_rows = len(row_items) + 1
+        self.n_cols = len(col_items) + 1
+        self.store = store
+        self.checkbox_dict = dict()
+
+        for col in (['', ] + col_items):
+            lab = MDLabel(
+                text=col,
+                font_style='Caption',
+                halign='center',
+                size_hint=(1 / self.n_cols, 1 / self.n_rows),
+                pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            )
+            table.add_widget(lab)
+
+        for row in row_items:
+            lab = MDLabel(
+                text=row,
+                font_style='Caption',
+                valign='center',
+                size_hint=(1 / self.n_cols, 1 / self.n_rows),
+                pos_hint={'center_x': 0.5, 'center_y': 0.5}
+            )
+            table.add_widget(lab)
+
+            for col in col_items:
+                transition_string = f'{row}|{col}'
+                lab = MDCheckbox(
+                    size_hint=(1 / 10, 1 / 19),
+                    pos_hint={'center_x': 0.5, 'center_y': 0.5},
+                    active=self.store.get(transition_string)['value']
+                )
+                lab.ids['transition'] = transition_string
+                lab.bind(active=self._set_transition)
+                self.checkbox_dict[transition_string] = lab
+                table.add_widget(lab)
+
+        button = MDRaisedButton(
+            text='Restore Defaults',
+            size_hint=(None, None),
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            on_press=self._reset_transition_defaults
+        )
+
+        self.add_widget(table)
+        self.add_widget(button)
+
+    def _reset_transition_defaults(self, *_):
+        for k, d in self.store.find():
+            value = d['value']
+            default = d['default']
+
+            if value != default:
+                self.checkbox_dict[k].active = default
+
+    def _set_transition(self, element, value):
+        key = element.ids['transition']
+        d = self.store.get(key)
+        d['value'] = value
+        self.store.put(key, **d)
 
 
 class ImageCard(MDCard):

@@ -20,11 +20,9 @@ from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.tab import MDTabs
 from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
 from kivymd.uix.label import MDLabel
-from kivymd.uix.button import MDRaisedButton
-from kivymd.uix.selectioncontrol import MDCheckbox
 
 from utils import clock_time_from_seconds
-from components import DropdownClass, Tab, WrappedLabel, ImageCard
+from components import DropdownClass, Tab, WrappedLabel, ImageCard, CheckboxTable
 from graphics import CircleWidget, RectangleWidget
 
 
@@ -80,16 +78,20 @@ class HistoricalFencingDrillsApp(MDApp):
             name='screen 3',
             text='About',
             icon='book',
-            on_tab_press=self.open_screen3
+            on_tab_press=self._create_screen_3
         )
 
         screen1 = self._create_screen_1()
         screen2 = self._create_screen_2()
-        screen3 = self._create_screen_3()
+        # screen3 = self._create_screen_3()
+
+        self.scroll_container = ScrollView(
+            do_scroll_x=False
+        )
 
         bottom_navigation_item1.add_widget(screen1)
         bottom_navigation_item2.add_widget(screen2)
-        bottom_navigation_item3.add_widget(screen3)
+        bottom_navigation_item3.add_widget(self.scroll_container)
 
         bottom_navigation.add_widget(bottom_navigation_item1)
         bottom_navigation.add_widget(bottom_navigation_item2)
@@ -439,88 +441,6 @@ class HistoricalFencingDrillsApp(MDApp):
             tab = Tab(title=tab_label)
             if tab_label == 'General':
                 tab.add_widget(container)
-            elif tab_label == 'Cut Transitions':
-                container = MDGridLayout(rows=19, cols=10, padding=dp(20))
-                for b in (['', ] + self.cuts):
-                    lab = MDLabel(
-                        text=b,
-                        font_style='Caption',
-                        halign='center',
-                        size_hint=(1 / 10, 1 / 19),
-                        pos_hint={'center_x': 0.5, 'center_y': 0.5},
-                    )
-                    container.add_widget(lab)
-
-                for a in self.cuts + self.guards:
-                    lab = MDLabel(
-                        text=a,
-                        font_style='Caption',
-                        valign='center',
-                        size_hint=(1 / 10, 1 / 19),
-                        pos_hint={'center_x': 0.5, 'center_y': 0.5}
-                    )
-                    container.add_widget(lab)
-                    for b in self.cuts:
-                        transition_string = f'{a}|{b}'
-                        lab = MDCheckbox(
-                            size_hint=(1 / 10, 1 / 19),
-                            pos_hint={'center_x': 0.5, 'center_y': 0.5},
-                            active=self.transitions.get(transition_string)['value']
-                        )
-                        lab.ids['transition'] = transition_string
-                        lab.bind(active=self._set_transition)
-                        self.cut_checkboxes[transition_string] = lab
-                        container.add_widget(lab)
-
-            elif tab_label == 'Guard Transitions':
-                container = MDGridLayout(rows=19, cols=10, padding=dp(20))
-                for b in (['', ] + self.guards):
-                    lab = MDLabel(
-                        text=b,
-                        font_style='Caption',
-                        halign='center',
-                        size_hint=(1 / 10, 1 / 19),
-                        pos_hint={'center_x': 0.5, 'center_y': 0.5},
-
-                    )
-                    container.add_widget(lab)
-
-                for a in self.cuts + self.guards:
-                    lab = MDLabel(
-                        text=a,
-                        font_style='Caption',
-                        valign='center',
-                        size_hint=(1 / 10, 1 / 19),
-                        pos_hint={'center_x': 0.5, 'center_y': 0.5}
-                    )
-                    container.add_widget(lab)
-                    for b in self.guards:
-                        transition_string = f'{a}|{b}'
-                        lab = MDCheckbox(
-                            size_hint=(1 / 10, 1 / 19),
-                            pos_hint={'center_x': 0.5, 'center_y': 0.5},
-                            active=self.transitions.get(transition_string)['value']
-                        )
-                        lab.ids['transition'] = transition_string
-                        lab.bind(active=self._set_transition)
-                        self.guard_checkboxes[transition_string] = lab
-                        container.add_widget(lab)
-
-            if tab_label != 'General':
-                layout = MDBoxLayout(
-                    orientation='vertical'
-                )
-                button = MDRaisedButton(
-                    text='Restore Defaults',
-                    size_hint=(None, None),
-                    pos_hint={'center_x': 0.5, 'center_y': 0.5},
-                    on_press=self._reset_transition_defaults
-                )
-
-                layout.add_widget(container)
-                layout.add_widget(button)
-
-                tab.add_widget(layout)
 
             self.tabs.add_widget(tab)
         self._disable_tabs()
@@ -581,11 +501,12 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return container
 
-    def _create_screen_3(self):
+    def _create_screen_3(self, *_):
 
-        self.scroll_container = ScrollView(
-            do_scroll_x=False
-        )
+        self.cancel_all_events()
+
+        if len(self.scroll_container.children) > 0:
+            return
 
         self.container = GridLayout(
             cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None
@@ -680,7 +601,11 @@ class HistoricalFencingDrillsApp(MDApp):
 
         self.scroll_container.add_widget(self.container)
 
-        return self.scroll_container
+        adjusted_width = Window.width - 20
+        self.image1.width = adjusted_width
+        self.image1.height = adjusted_width
+        self.image2.width = adjusted_width
+        self.image2.height = adjusted_width / self.image2.image_ratio
 
     def _update_screen2(self, row, _):
         call_time, call_length, time_text, call_text, full_call_text, play_sound = row
@@ -696,33 +621,27 @@ class HistoricalFencingDrillsApp(MDApp):
 
             play_sound.play()
 
-    def open_screen3(self, *_):
-        self.cancel_all_events()
-        self.set_dims()
-
-    def _reset_transition_defaults(self, *_):
-        for k, d in self.transitions.find():
-            value = d['value']
-            default = d['default']
-
-            change_cuts = self.current_tab == 'Cut Transitions'
-            in_cuts = k in self.cut_checkboxes
-            is_different = value != default
-
-            if change_cuts and in_cuts and is_different:
-                self.cut_checkboxes[k].active = default
-            elif (not change_cuts) and (not in_cuts) and is_different:
-                self.guard_checkboxes[k].active = default
-
-    def _set_transition(self, element, value):
-        key = element.ids['transition']
-        d = self.transitions.get(key)
-        d['value'] = value
-        self.transitions.put(key, **d)
-
     def _switch_tabs(self, tabs, tab, label, tab_text):
 
         self.current_tab = tab_text
+
+        if len(tab.children) == 0:
+            if tab_text == 'Cut Transitions':
+                container = CheckboxTable(
+                    row_items=self.cuts + self.guards,
+                    col_items=self.cuts,
+                    store=self.transitions,
+                    orientation='vertical'
+                )
+                tab.add_widget(container)
+            elif tab_text == 'Guard Transitions':
+                container = CheckboxTable(
+                    row_items=self.cuts + self.guards,
+                    col_items=self.guards,
+                    store=self.transitions,
+                    orientation='vertical'
+                )
+                tab.add_widget(container)
 
     def _disable_tabs(self):
         manual_options = ('Manual', 'Manual (cuts only)', 'Manual (guards only)')
@@ -752,14 +671,6 @@ class HistoricalFencingDrillsApp(MDApp):
     def change_value(self, _, text):
         self.call_diagram.pointer_position_code = text
         self.call_diagram.update_lines()
-
-    def set_dims(self, *_):
-        width = Window.width
-        adjusted_width = width - 20  # * 0.66
-        self.image1.width = adjusted_width
-        self.image1.height = adjusted_width
-        self.image2.width = adjusted_width
-        self.image2.height = adjusted_width / self.image2.image_ratio
 
     def cancel_all_events(self, *_):
         for event in Clock.get_events():
