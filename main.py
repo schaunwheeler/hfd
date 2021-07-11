@@ -38,6 +38,7 @@ class HistoricalFencingDrillsApp(MDApp):
         self.min_combo_length_widget = None
         self.max_combo_length_widget = None
         self.mode_widget = None
+        self.scroll_container = None
         self.current_tab = 'General'
         self.cuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         self.guards = ['H', 'rH', 'L', 'rL', 'M', 'rM', 'G', 'rG', 'T']
@@ -83,7 +84,6 @@ class HistoricalFencingDrillsApp(MDApp):
 
         screen1 = self._create_screen_1()
         screen2 = self._create_screen_2()
-        # screen3 = self._create_screen_3()
 
         self.scroll_container = ScrollView(
             do_scroll_x=False
@@ -101,17 +101,7 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return parent
 
-    def schedule_calls(self, _):
-        for row in self._create_buffer():
-            Clock.schedule_once(
-                partial(
-                    self._update_screen2,
-                    row
-                ),
-                row[0]
-            )
-
-    def _get_patterns(self):
+    def _create_pattern_generator(self):
         m, s = self.total_time_widget.text.split(':')
         total_time = int(m) * 60 + int(s)
         min_size = int(self.min_combo_length_widget.text)
@@ -138,17 +128,17 @@ class HistoricalFencingDrillsApp(MDApp):
             transitions_dict = {k: list(transitions_set.intersection(v)) for k, v in transitions_dict.items()}
             transitions_set = list(transitions_set)
 
-            call = random.choice(transitions_set)
-            patterns = list()
-            while total_time > 0:
-                combo_length = random.randrange(min_size, max_size + 1)
-                call = random.choice(transitions_dict[call])
-                combo = [call]
-                while len(combo) < combo_length:
+            def generator_function():
+                call = random.choice(transitions_set)
+                while True:
+                    combo_length = random.randrange(min_size, max_size + 1)
                     call = random.choice(transitions_dict[call])
-                    combo.append(call)
-                    total_time -= 1
-                patterns.append(combo)
+                    combo = [call]
+                    while len(combo) < combo_length:
+                        call = random.choice(transitions_dict[call])
+                        combo.append(call)
+
+                    yield combo
 
         elif self.mode_widget.text == 'Pre-programmed':
             with open('assets/combos.txt', 'r') as f:
@@ -164,119 +154,151 @@ class HistoricalFencingDrillsApp(MDApp):
                 ],
                 k=total_time
             )
+
+            def generator_function():
+                yield random.choice(patterns)
         else:
             raise ValueError('Valid values are `Pre-programmed` and `Custom`.')
 
-        return patterns
+        return generator_function
 
-    def _create_buffer(self):
-
-        call_wait = float(self.call_wait_widget.text)
-        combo_wait = float(self.combo_wait_widget.text)
+    def schedule_calls(self, *args, leading_n=10):
         m, s = self.total_time_widget.text.split(':')
-        total_time = int(m) * 60 + int(s)
-        combo_expand = True if self.combo_expand_widget.text == 'ON' else False
-        combo_repeat = True if self.combo_repeat_widget.text == 'ON' else False
-
-        patterns = self._get_patterns()
-
-        sounds = {
-            s: SoundLoader.load(f'assets/sounds/{s}.wav')
-            for s in set().union(*patterns)
-        }
-
-        buffer = list()
-        i = 0
-        time_left = total_time + 10
-        while i < (total_time + 10):
-            if i < 10:
-
-                row = (i, None, self.total_time_widget.text, 'READY', str(10 - i), None)
-                buffer.append(row)
-                time_left -= 1
-                i += 1
-            elif i == 10:
-                time_string = clock_time_from_seconds(round(time_left))
-                row = (i, None, time_string, 'BEGIN', '', None)
-                buffer.append(row)
-                time_left -= 1
-                i += 1
-            else:
-                if len(patterns) == 0:
-                    patterns = self._get_patterns()
-
-                pat = patterns.pop()
-                start = 2 if combo_expand else len(pat)
-                for end in range(start, len(pat) + 1):
-                    for call in range(end):
-                        call_text = pat[call]
-                        call_list = ' '.join(pat[:call + 1])
-                        call_sound = sounds[call_text]
-                        call_length = call_sound.length + call_wait
-
-                        time_string = clock_time_from_seconds(math.floor(time_left))
-                        row = (i, call_length, time_string, call_text, call_list, call_sound)
-                        buffer.append(row)
-
-                        i += call_length
-                        time_left -= call_length
-                        if time_left <= 0:
-                            break
-
-                    if time_left <= 0:
-                        break
-                    i += combo_wait
-                    time_left -= combo_wait
-
-                if combo_repeat and (time_left > 0):
-                    end = len(pat)
-                    for call in range(end):
-                        call_text = pat[call]
-                        call_list = ' '.join(pat[:call + 1])
-                        call_sound = sounds[call_text]
-                        call_length = call_sound.length + call_wait
-
-                        time_string = clock_time_from_seconds(math.floor(time_left))
-                        row = (i, call_length, time_string, call_text, call_list, call_sound)
-                        buffer.append(row)
-
-                        i += call_length
-                        time_left -= call_length
-                        if time_left <= 0:
-                            break
-
-                    if time_left <= 0:
-                        break
-                    i += combo_wait
-                    time_left -= combo_wait
-
-        j = 12
-        prev_row = buffer[11]
-        for row in buffer:
-            if j >= (total_time + 10):
+        total_time = int(m) * 60 + int(s) + leading_n
+        for row in self._create_ready(leading_n):
+            Clock.schedule_once(
+                partial(
+                    self._update_screen2,
+                    row
+                ),
+                row[0]
+            )
+        prev_row = [leading_n + 1]
+        # (i, call_length, time_string, call_text, call_list, call_sound
+        for row in self._create_buffer(leading_n):
+            if row[0] > total_time:
                 break
-            val = row[0]
-            while math.floor(val) >= j:
-                new_time = total_time + 9 - j
-                if new_time <= 0:
-                    break
-                time_string = clock_time_from_seconds(new_time)
-                new_row = (j, None, time_string) + prev_row[3:-1] + (None, )
-                buffer.append(new_row)
-                j += 1
+            base_i_prev = math.floor(prev_row[0])
+            base_i = math.floor(row[0])
+            for base_i in range(base_i_prev + 1, base_i + 1):
+                time_string = clock_time_from_seconds(total_time - base_i)
+                filler_row = (
+                    base_i,
+                    row[0] - base_i,
+                    time_string,
+                    prev_row[3],
+                    prev_row[4],
+                    None
+                )
+                Clock.schedule_once(
+                    partial(
+                        self._update_screen2,
+                        filler_row
+                    ),
+                    filler_row[0]
+                )
+
+            Clock.schedule_once(
+                partial(
+                    self._update_screen2,
+                    row
+                ),
+                row[0]
+            )
             prev_row = row
 
-        buffer = sorted(buffer, key=lambda t: t[0])
-        buffer.append((
-            total_time + 11,
+        final_row = (
+            row[0] + 1,
             0,
             self.total_time_widget.text,
             'READY',
             '',
             None
-        ))
+        )
+        Clock.schedule_once(
+            partial(
+                self._update_screen2,
+                final_row
+            ),
+            final_row[0]
+        )
 
-        return buffer
+    def _create_ready(self, leading_n=10):
+        for i in range(leading_n + 1):
+            if i < leading_n:
+                row = (i, None, self.total_time_widget.text, 'READY', str(leading_n - i), None)
+            else:
+                row = (i, None, self.total_time_widget.text, 'BEGIN', '', None)
+
+            yield row
+
+    def _create_buffer(self, leading_n=10):
+
+        call_wait = float(self.call_wait_widget.text)
+        combo_wait = float(self.combo_wait_widget.text)
+        m, s = self.total_time_widget.text.split(':')
+        total_time = int(m) * 60 + int(s)
+        combo_expand = self.combo_expand_widget.text == 'ON'
+        combo_repeat = self.combo_repeat_widget.text == 'ON'
+
+        pattern_generator = self._create_pattern_generator()
+
+        sounds = {
+            s: SoundLoader.load(f'assets/sounds/{s}.wav')
+            for s in (self.cuts + self.guards)
+        }
+
+        i = leading_n + 1
+        for pat in pattern_generator():
+
+            start = 2 if combo_expand else len(pat)
+            for end in range(start, len(pat) + 1):
+                for call in range(end):
+                    call_text = pat[call]
+                    call_list = ' '.join(pat[:call + 1])
+                    call_sound = sounds[call_text]
+                    call_length = call_sound.length + call_wait
+                    if i == (leading_n + 1):
+                        time_string = clock_time_from_seconds(math.floor(total_time - 1))
+                    else:
+                        time_string = clock_time_from_seconds(math.floor(total_time))
+                    row = (
+                        i,
+                        call_length,
+                        time_string,
+                        call_text,
+                        call_list,
+                        call_sound
+                    )
+                    i += call_length
+                    total_time -= call_length
+                    yield row
+
+                i += combo_wait
+                total_time -= combo_wait
+
+            if combo_repeat:
+                end = len(pat)
+                for call in range(end):
+                    call_text = pat[call]
+                    call_list = ' '.join(pat[:call + 1])
+                    call_sound = sounds[call_text]
+                    call_length = call_sound.length + call_wait
+                    time_string = clock_time_from_seconds(math.floor(total_time))
+                    row = (
+                        i,
+                        call_length,
+                        time_string,
+                        call_text,
+                        call_list,
+                        call_sound
+                    )
+                    i += call_length
+                    total_time -= call_length
+                    yield row
+
+                i += combo_wait
+                total_time -= combo_wait
 
     def _create_screen_1(self):
 
@@ -613,7 +635,12 @@ class HistoricalFencingDrillsApp(MDApp):
         self.call_label.text = call_text
         self.full_call_label.text = full_call_text
 
-        if play_sound:
+        if call_text == 'READY':
+            self.call_diagram.pointer_position_code = None
+            self.call_diagram.update_lines()
+            self.call_pointer.pointer_position_code = None
+            self.call_pointer.update_circle()
+        elif play_sound:
             self.call_diagram.pointer_position_code = call_text
             self.call_diagram.update_lines()
             self.call_pointer.pointer_position_code = call_text
@@ -686,5 +713,5 @@ class HistoricalFencingDrillsApp(MDApp):
 
 if __name__ == '__main__':
 
-    # Window.size = (720 / 2, 1280 / 2)
+    Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
