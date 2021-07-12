@@ -44,14 +44,13 @@ class HistoricalFencingDrillsApp(MDApp):
         self.max_combo_length_widget = None
 
         # placeholders for layouts
-        self.scroll_container = None
-        self.container = None
         self.screen3 = None
         self.screen_3_spinner = None
         self.screen_3_populated = False
 
         # Default settings
-        self.current_tab = 'General'
+        self.current_settings_tab = 'General'
+        self.current_about_tab = 'HFD'
         self.cuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         self.guards = ['H', 'rH', 'L', 'rL', 'M', 'rM', 'G', 'rG', 'T']
         self.cut_checkboxes = dict()
@@ -512,8 +511,8 @@ class HistoricalFencingDrillsApp(MDApp):
         box.add_widget(self.combo_expand_widget)
         container.add_widget(box)
 
-        self.tabs = MDTabs()
-        self.tabs.bind(on_tab_switch=self._switch_tabs)
+        self.settings_tabs = MDTabs()
+        self.settings_tabs.bind(on_tab_switch=self._switch_settings_tabs)
 
         for tab_label in (
                 'General',
@@ -542,9 +541,9 @@ class HistoricalFencingDrillsApp(MDApp):
                 tab.add_widget(container)
                 tab.ids['checkboxes'] = container
 
-            self.tabs.add_widget(tab)
+            self.settings_tabs.add_widget(tab)
         self._disable_tabs()
-        return self.tabs
+        return self.settings_tabs
 
     def _create_screen_2(self):
         container = MDFloatLayout()
@@ -603,116 +602,140 @@ class HistoricalFencingDrillsApp(MDApp):
 
     def _create_screen_3(self, *_):
 
-        self.cancel_all_events()
+        self.about_tabs = MDTabs()
+        self.about_tabs.bind(on_tab_switch=self._switch_about_tabs)
+        self.screen3.add_widget(self.about_tabs)
 
-        if self.screen_3_populated:
-            return
+        for tab_label in (
+                'HFD',
+                'Cuts and Guards',
+                'Settings'
+        ):
+            tab = Tab(title=tab_label)
+            if tab_label == 'HFD':
+                header = WrappedLabel(
+                    text='Historical Fencing Drills',
+                    halign='left',
+                    font_style='H3',
+                    size_hint_y=None,
+                    size_hint_x=1,
+                    text_size=(None, None),
+                    width_padding=20
+                )
 
-        self.scroll_container = ScrollView(
-            do_scroll_x=False
-        )
-        self.container = GridLayout(
-            cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None
-        )
-        self.container.bind(minimum_height=self.container.setter('height'))
-        self.scroll_container.add_widget(self.container)
+                with open('assets/texts/paragraph1.txt', 'r') as f:
+                    paragraph1 = WrappedLabel(
+                        text=f.read(),
+                        halign='left',
+                        font_style='Body1',
+                        size_hint_y=None,
+                        size_hint_x=1,
+                        text_size=(None, None),
+                        width_padding=20
+                    )
 
-        self.header = WrappedLabel(
-            text='Historical Fencing Drills',
-            halign='left',
-            font_style='H3',
-            size_hint_y=None,
-            size_hint_x=1,
-            text_size=(None, None),
-            width_padding=20
-        )
+                scroll_container = ScrollView(do_scroll_x=False)
+                container = GridLayout(cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None)
+                container.bind(minimum_height=container.setter('height'))
+                scroll_container.add_widget(container)
+                container.add_widget(header)
+                container.add_widget(paragraph1)
+                tab.add_widget(scroll_container)
+            elif tab_label == 'Cuts and Guards':
 
-        with open('assets/texts/paragraph1.txt', 'r') as f:
-            self.paragraph1 = WrappedLabel(
-                text=f.read(),
-                halign='left',
-                font_style='Body1',
-                size_hint_y=None,
-                size_hint_x=1,
-                text_size=(None, None),
-                width_padding=20
-            )
+                with open('assets/texts/paragraph2a.txt', 'r') as f:
+                    paragraph2a = WrappedLabel(
+                        text=f.read(),
+                        halign='left',
+                        font_style='Body1',
+                        size_hint_y=None,
+                        size_hint_x=1,
+                        text_size=(None, None),
+                        width_padding=20
+                    )
 
-        image_files = {
-            'fiore_getty.png': "[i]The Segno della Spada[/i] of Fiore dei Libieri, 1409.",
-            'vadi_gladiatoria.jpg': "Filippo Vadi’s [i]De Arte Gladiatoria[/i], c.1482",
-            'marozzo_opera.png': "Achille Marozzo's [i]Opera Nova[/i], 1536.",
-            'meyer_1560_end.png': "Cutting drill diagrams from the end of Joachim Meyer's first manual, 1561.",
-            'meyer_1570_longsword.png': "Longsword cut patterns from Joachim Meyer's second manual, 1570.",
-            'meyer_1570_dussack.gif': "Instruction for Dussak from Joachim Meyer's second manual, 1570.",
-            'fabris_science.png': "Salvatore Fabris's [i]Science and Practice of Arms[/i], 1606.",
-            'marchant_rules.png': "Le Marchant’s [i]Rules and Regulations for the Sword Exercise of the Cavalry[/i], 1796.",
-            'starzewski_fencing.png': "Michal Starzewski's [i]On Fencing[/i], 1830.",
-            'angelo_infantry.png': "Angelo the Younger's [i]Infantry Sword Exercises[/i], 1845.",
-            'burton_exercises.png': "Richard F. Burton's [i]The New Sword Exercise for Infantry[/i], 1876.",
-            'happo_giri.png': "[i]The Happo Giri[/i] of Toyama Ryu Nakamura-ha, 1952.",
-            'self_defense.png': "A diagram commonly used in modern self-defense courses.",
-        }
+                image_files = {
+                    'fiore_getty.png': "[i]The Segno della Spada[/i] of Fiore dei Libieri, 1409.",
+                    'vadi_gladiatoria.jpg': "Filippo Vadi’s [i]De Arte Gladiatoria[/i], c.1482",
+                    'marozzo_opera.png': "Achille Marozzo's [i]Opera Nova[/i], 1536.",
+                    'meyer_1560_end.png': "Cutting drill diagrams from the end of Joachim Meyer's first manual, 1561.",
+                    'meyer_1570_longsword.png': "Longsword cut patterns from Joachim Meyer's second manual, 1570.",
+                    'meyer_1570_dussack.gif': "Instruction for Dussak from Joachim Meyer's second manual, 1570.",
+                    'fabris_science.png': "Salvatore Fabris's [i]Science and Practice of Arms[/i], 1606.",
+                    'marchant_rules.png': "Le Marchant’s [i]Rules and Regulations for the Sword Exercise of the Cavalry[/i], 1796.",
+                    'starzewski_fencing.png': "Michal Starzewski's [i]On Fencing[/i], 1830.",
+                    'angelo_infantry.png': "Angelo the Younger's [i]Infantry Sword Exercises[/i], 1845.",
+                    'burton_exercises.png': "Richard F. Burton's [i]The New Sword Exercise for Infantry[/i], 1876.",
+                    'happo_giri.png': "[i]The Happo Giri[/i] of Toyama Ryu Nakamura-ha, 1952.",
+                    'self_defense.png': "A diagram commonly used in modern self-defense courses.",
+                }
 
-        self.image1 = ImageCard(
-            image_list=image_files,
-            image_path='assets/images/',
-            orientation="vertical",
-            padding="8dp",
-            size_hint=(None, None),
-            size=("280dp", "180dp"),
-            pos_hint={"center_x": .5, "center_y": .5}
-        )
+                self.image1 = ImageCard(
+                    image_list=image_files,
+                    image_path='assets/images/',
+                    orientation="vertical",
+                    padding="8dp",
+                    size_hint=(None, None),
+                    size=("280dp", "180dp"),
+                    pos_hint={"center_x": .5, "center_y": .5}
+                )
 
-        with open('assets/texts/paragraph2.txt', 'r') as f:
-            self.paragraph2 = WrappedLabel(
-                text=f.read(),
-                halign='left',
-                font_style='Body1',
-                size_hint_y=None,
-                size_hint_x=1,
-                text_size=(None, None),
-                width_padding=20
-            )
+                with open('assets/texts/paragraph2b.txt', 'r') as f:
+                    paragraph2b = WrappedLabel(
+                        text=f.read(),
+                        halign='left',
+                        font_style='Body1',
+                        size_hint_y=None,
+                        size_hint_x=1,
+                        text_size=(None, None),
+                        width_padding=20
+                    )
 
-        self.image2 = Image(
-            source='assets/images/cut_and_thrust_abbreviations.png',
-            allow_stretch=True,
-            keep_ratio=True,
-            size_hint_y=None,
-            size_hint_x=None,
-            width=self.container.width,
-            height=self.container.width
-        )
-        with open('assets/texts/paragraph3.txt', 'r') as f:
-            self.paragraph3 = WrappedLabel(
-                text=f.read(),
-                markup=True,
-                halign='left',
-                font_style='Body1',
-                size_hint_y=None,
-                size_hint_x=1,
-                text_size=(None, None),
-                width_padding=20
-            )
+                self.image2 = Image(
+                    source='assets/images/cut_and_thrust_abbreviations.png',
+                    allow_stretch=True,
+                    keep_ratio=True,
+                    size_hint_y=None,
+                    size_hint_x=None
+                )
+                scroll_container = ScrollView(do_scroll_x=False)
+                container = GridLayout(cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None)
+                container.bind(minimum_height=container.setter('height'))
+                scroll_container.add_widget(container)
+                container.add_widget(paragraph2a)
+                container.add_widget(self.image1)
+                container.add_widget(paragraph2b)
+                container.add_widget(self.image2)
+                tab.add_widget(scroll_container)
 
-        self.container.add_widget(self.header)
-        self.container.add_widget(self.paragraph1)
-        self.container.add_widget(self.image1)
-        self.container.add_widget(self.paragraph2)
-        self.container.add_widget(self.image2)
-        self.container.add_widget(self.paragraph3)
+                adjusted_width = Window.width - 20
+                self.image1.width = adjusted_width
+                self.image1.height = adjusted_width
+                self.image2.width = adjusted_width
+                self.image2.height = adjusted_width / self.image2.image_ratio
 
-        self.screen3.add_widget(self.scroll_container)
-        adjusted_width = Window.width - 20
-        self.image1.width = adjusted_width
-        self.image1.height = adjusted_width
-        self.image2.width = adjusted_width
-        self.image2.height = adjusted_width / self.image2.image_ratio
+            elif tab_label == 'Settings':
+                with open('assets/texts/paragraph3.txt', 'r') as f:
+                    paragraph3 = WrappedLabel(
+                        text=f.read(),
+                        markup=True,
+                        halign='left',
+                        font_style='Body1',
+                        size_hint_y=None,
+                        size_hint_x=1,
+                        text_size=(None, None),
+                        width_padding=20
+                    )
+                scroll_container = ScrollView(do_scroll_x=False)
+                container = GridLayout(cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None)
+                container.bind(minimum_height=container.setter('height'))
+                scroll_container.add_widget(container)
+                container.add_widget(paragraph3)
+                tab.add_widget(scroll_container)
+
+            self.about_tabs.add_widget(tab)
 
         self.screen_3_populated = True
-        self.screen_3_spinner.active = False
-        Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', True), 0.0)
         Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', False), 2.0)
 
     def _update_screen2(self, row, _):
@@ -735,22 +758,28 @@ class HistoricalFencingDrillsApp(MDApp):
             play_sound.play()
 
     def open_screen_3(self, *_):
-        self.screen_3_spinner.active = True
-        Clock.schedule_once(lambda x: self._create_screen_3(), 2)
+        self.cancel_all_events()
+        if not self.screen_3_populated:
+            Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', True), 0.0)
+            Clock.schedule_once(lambda x: self._create_screen_3(), 2)
 
-    def _switch_tabs(self, tabs, tab, label, tab_text):
+    def _switch_settings_tabs(self, tabs, tab, label, tab_text):
 
-        self.current_tab = tab_text
+        self.current_settings_tab = tab_text
 
         if 'checkboxes' in tab.ids:
             if not tab.ids['checkboxes'].table_populated:
                 tab.ids['checkboxes'].set_spinner(True)
                 Clock.schedule_once(lambda dt: tab.ids['checkboxes'].create_table(), 1)
 
+    def _switch_about_tabs(self, tabs, tab, label, tab_text):
+
+        self.current_about_tab = tab_text
+
     def _disable_tabs(self):
         manual_options = ('Manual')
         flag = self.mode_widget.text not in manual_options
-        for tab in self.tabs.get_slides():
+        for tab in self.settings_tabs.get_slides():
             if tab.title != 'General':
                 tab.tab_label.disabled_color = [0.0, 0.0, 0.0, 0.1]
                 tab.tab_label.disabled = flag
