@@ -2,6 +2,7 @@ import os
 
 from kivy.properties import StringProperty
 from kivy.metrics import dp
+from kivy.clock import Clock
 
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -87,6 +88,8 @@ class CheckboxTable(MDFloatLayout):
                 pos_hint={'center_x': 0.5, 'center_y': 0.5}
             )
             self.table.add_widget(lab)
+            self.set_spinner(False)
+            self.set_spinner(True)
 
             for col in self.col_items:
                 transition_string = f'{row}|{col}'
@@ -102,7 +105,9 @@ class CheckboxTable(MDFloatLayout):
 
         self.table_populated = True
         if self.spinner.active:
-            self.spinner.active = False
+            self.set_spinner(False)
+            self.set_spinner(True)
+            Clock.schedule_once(lambda dt: self.set_spinner(False), 1.0)
 
     def _reset_transition_defaults(self, *_):
         for k, d in self.store.find():

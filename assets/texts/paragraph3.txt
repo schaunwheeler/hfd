@@ -2,6 +2,8 @@ The app provides multiple ways to adjust the training program:
 
    • [b]Mode:[/b] If set to "Pre-programmed", the app will cycle through a collection of pre-programmed drills (currently only includes cuts). If set to any one of the manual modes, the app will dynamically create combinations based on the "Cut transitions" and "Guard transitions" tabs of the settings screen.
 
+   • [b]% cuts:[/b] Available only for "manual" mode", this decides the balance of cuts to guards in the combos. If set to 0%, the app will always call out guards. If set to 100%, the app will always call out cuts.
+
    • [b]Drill duration:[/b] the amount of time you want to train for.
 
    • [b]Seconds after call:[/b] the number of seconds to wait calling out the next cut or guard.

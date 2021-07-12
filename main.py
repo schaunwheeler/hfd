@@ -31,6 +31,10 @@ class HistoricalFencingDrillsApp(MDApp):
 
     def __init__(self, **kwargs):
         super(HistoricalFencingDrillsApp, self).__init__(**kwargs)
+
+        # placeholders for settings widgets
+        self.mode_widget = None
+        self.pct_widget = None
         self.total_time_widget = None
         self.call_wait_widget = None
         self.combo_wait_widget = None
@@ -38,12 +42,15 @@ class HistoricalFencingDrillsApp(MDApp):
         self.combo_expand_widget = None
         self.min_combo_length_widget = None
         self.max_combo_length_widget = None
-        self.mode_widget = None
+
+        # placeholders for layouts
         self.scroll_container = None
         self.container = None
         self.screen3 = None
         self.screen_3_spinner = None
         self.screen_3_populated = False
+
+        # Default settings
         self.current_tab = 'General'
         self.cuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         self.guards = ['H', 'rH', 'L', 'rL', 'M', 'rM', 'G', 'rG', 'T']
@@ -94,7 +101,7 @@ class HistoricalFencingDrillsApp(MDApp):
         self.screen_3_spinner = MDSpinner(
             size_hint=(0.1, 0.1),
             pos_hint={'center_x': 0.5, 'center_y': 0.5},
-            active=True
+            active=False
         )
         self.screen3.add_widget(self.screen_3_spinner)
 
@@ -110,17 +117,21 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return parent
 
-    def open_screen_3(self, *_):
-        self.screen_3_spinner.active = True
-        Clock.schedule_once(lambda x: self._create_screen_3(), 3)
-
     def _create_pattern_generator(self):
         m, s = self.total_time_widget.text.split(':')
         total_time = int(m) * 60 + int(s)
         min_size = int(self.min_combo_length_widget.text)
         max_size = int(self.max_combo_length_widget.text)
+        cut_weight = float(self.pct_widget.text.strip('%')) / 100
+        guard_weight = 1.0 - cut_weight
 
-        manual_options = ('Manual', 'Manual (cuts only)', 'Manual (guards only)')
+        weight_dict = dict()
+        for k in self.cuts:
+            weight_dict[k] = cut_weight
+        for k in self.guards:
+            weight_dict[k] = guard_weight
+
+        manual_options = ('Manual')
         if self.mode_widget.text in manual_options:
             transitions_dict = dict()
             for t, v in self.transitions.find():
@@ -141,14 +152,21 @@ class HistoricalFencingDrillsApp(MDApp):
             transitions_dict = {k: list(transitions_set.intersection(v)) for k, v in transitions_dict.items()}
             transitions_set = list(transitions_set)
 
+            def draw_from_options(options):
+                weights = [weight_dict[o] for o in options]
+                if max(weights) == 0.0:
+                    weights = [1.0] * len(weights)
+
+                return random.choices(options, weights=weights)[0]
+
             def generator_function():
-                call = random.choice(transitions_set)
+                call = draw_from_options(transitions_set)
                 while True:
                     combo_length = random.randrange(min_size, max_size + 1)
-                    call = random.choice(transitions_dict[call])
+                    call = draw_from_options(transitions_dict[call])
                     combo = [call]
                     while len(combo) < combo_length:
-                        call = random.choice(transitions_dict[call])
+                        call = draw_from_options(transitions_dict[call])
                         combo.append(call)
 
                     yield combo
@@ -321,25 +339,54 @@ class HistoricalFencingDrillsApp(MDApp):
             spacing=dp(10)
         )
 
-        box = MDGridLayout(cols=1)
-        title = MDLabel(text='Mode:', font_style='Button')
+        mode_box = MDGridLayout(
+            cols=2, rows=2, orientation='tb-lr',
+            spacing=[dp(5), dp(0)]
+        )
+        title = MDLabel(
+            text='Mode:',
+            font_style='Button',
+            size_hint=(0.8, None),
+            pos_hint={'center_x': .4, 'center_y': 0.5}
+        )
         self.mode_widget = DropdownClass(
             menu_items=[
                 'Pre-programmed',
-                'Manual', 'Manual (cuts)', 'Manual (guards)'
+                'Manual'
             ],
             truncate_label=None,
             position='center',
             width_mult=100,
-            size_hint=(0.35, None),
-            pos_hint={'center_x': .5, 'center_y': 0.5}
+            size_hint=(0.8, None),
+            pos_hint={'center_x': .4, 'center_y': 0.5}
         )
         self.mode_widget.set_item(self.settings.get('Mode:')['text'])
         self.mode_widget.ids['title'] = 'Mode:'
         self.mode_widget.bind(text=self.store_new_value)
-        box.add_widget(title)
-        box.add_widget(self.mode_widget)
-        container.add_widget(box)
+        mode_box.add_widget(title)
+        mode_box.add_widget(self.mode_widget)
+
+        title = MDLabel(
+            text='% cuts:',
+            font_style='Button',
+            size_hint=(0.2, None),
+            pos_hint={'center_x': .9, 'center_y': 0.5}
+        )
+        self.pct_widget = DropdownClass(
+            menu_items=[f"{v / 100:.0%}" for v in range(0, 105, 5)],
+            truncate_label=None,
+            position='center',
+            width_mult=2,
+            size_hint=(0.2, None),
+            pos_hint={'center_x': .9, 'center_y': 0.5}
+        )
+        self.pct_widget.set_item(self.settings.get('% cuts:')['text'])
+        self.pct_widget.ids['title'] = '% cuts:'
+        self.pct_widget.bind(text=self.store_new_value)
+
+        mode_box.add_widget(title)
+        mode_box.add_widget(self.pct_widget)
+        container.add_widget(mode_box)
 
         box = MDGridLayout(cols=1)
         title = MDLabel(text='Drill duration:', font_style='Button')
@@ -656,16 +703,17 @@ class HistoricalFencingDrillsApp(MDApp):
         self.container.add_widget(self.image2)
         self.container.add_widget(self.paragraph3)
 
-        self.screen_3_spinner.active = False
-        self.screen3.remove_widget(self.screen_3_spinner)
         self.screen3.add_widget(self.scroll_container)
-        self.screen_3_populated = True
-
         adjusted_width = Window.width - 20
         self.image1.width = adjusted_width
         self.image1.height = adjusted_width
         self.image2.width = adjusted_width
         self.image2.height = adjusted_width / self.image2.image_ratio
+
+        self.screen_3_populated = True
+        self.screen_3_spinner.active = False
+        Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', True), 0.0)
+        Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', False), 1.0)
 
     def _update_screen2(self, row, _):
         call_time, call_length, time_text, call_text, full_call_text, play_sound = row
@@ -686,23 +734,28 @@ class HistoricalFencingDrillsApp(MDApp):
 
             play_sound.play()
 
+    def open_screen_3(self, *_):
+        self.screen_3_spinner.active = True
+        Clock.schedule_once(lambda x: self._create_screen_3(), 1)
+
     def _switch_tabs(self, tabs, tab, label, tab_text):
 
         self.current_tab = tab_text
 
         if 'checkboxes' in tab.ids:
             if not tab.ids['checkboxes'].table_populated:
-                Clock.schedule_once(lambda dt: tab.ids['checkboxes'].set_spinner(True))
+                tab.ids['checkboxes'].set_spinner(True)
                 Clock.schedule_once(lambda dt: tab.ids['checkboxes'].create_table(), 1)
 
     def _disable_tabs(self):
-        manual_options = ('Manual', 'Manual (cuts only)', 'Manual (guards only)')
+        manual_options = ('Manual')
         flag = self.mode_widget.text not in manual_options
         for tab in self.tabs.get_slides():
             if tab.title != 'General':
                 tab.tab_label.disabled_color = [0.0, 0.0, 0.0, 0.1]
                 tab.tab_label.disabled = flag
                 tab.disabled = flag
+        self.pct_widget.disabled = flag
 
     def store_new_value(self, widget, text):
         key = widget.ids['title']
@@ -738,5 +791,5 @@ class HistoricalFencingDrillsApp(MDApp):
 
 if __name__ == '__main__':
 
-    # Window.size = (720 / 2, 1280 / 2)
+    Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
