@@ -107,7 +107,7 @@ class CheckboxTable(MDFloatLayout):
         if self.spinner.active:
             self.set_spinner(False)
             self.set_spinner(True)
-            Clock.schedule_once(lambda dt: self.set_spinner(False), 1.0)
+            Clock.schedule_once(lambda dt: self.set_spinner(False), 2.0)
 
     def _reset_transition_defaults(self, *_):
         for k, d in self.store.find():

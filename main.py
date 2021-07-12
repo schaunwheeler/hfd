@@ -99,7 +99,7 @@ class HistoricalFencingDrillsApp(MDApp):
         self.screen3 = MDFloatLayout()
 
         self.screen_3_spinner = MDSpinner(
-            size_hint=(0.1, 0.1),
+            size_hint=(0.25, 0.25),
             pos_hint={'center_x': 0.5, 'center_y': 0.5},
             active=False
         )
@@ -713,7 +713,7 @@ class HistoricalFencingDrillsApp(MDApp):
         self.screen_3_populated = True
         self.screen_3_spinner.active = False
         Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', True), 0.0)
-        Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', False), 1.0)
+        Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', False), 2.0)
 
     def _update_screen2(self, row, _):
         call_time, call_length, time_text, call_text, full_call_text, play_sound = row
@@ -736,7 +736,7 @@ class HistoricalFencingDrillsApp(MDApp):
 
     def open_screen_3(self, *_):
         self.screen_3_spinner.active = True
-        Clock.schedule_once(lambda x: self._create_screen_3(), 1)
+        Clock.schedule_once(lambda x: self._create_screen_3(), 2)
 
     def _switch_tabs(self, tabs, tab, label, tab_text):
 
@@ -791,5 +791,5 @@ class HistoricalFencingDrillsApp(MDApp):
 
 if __name__ == '__main__':
 
-    Window.size = (720 / 2, 1280 / 2)
+    # Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
