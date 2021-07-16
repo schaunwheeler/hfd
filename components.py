@@ -68,7 +68,7 @@ class CheckboxTable(MDFloatLayout):
     def set_spinner(self, set_at):
         self.spinner.active = set_at
 
-    def create_table_layout(self):
+    def create_table_layout(self, timing=100):
         for col in (['', ] + self.col_items):
             lab = MDLabel(
                 text=col,
@@ -80,7 +80,7 @@ class CheckboxTable(MDFloatLayout):
             self.table.add_widget(lab)
 
         for i, row in enumerate(self.row_items):
-            j = (i + 1) / 100
+            j = (i + 1) / timing
             cells = [row, ] + self.col_items
             cells = cells[:]
             from functools import partial
