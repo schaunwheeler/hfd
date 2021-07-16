@@ -72,6 +72,7 @@ class HistoricalFencingDrillsApp(MDApp):
 
         self.theme_cls.primary_palette = "Gray"
         parent = self.create_navigation()
+        print(self.settings_tabs.carousel.anim_type)
         return parent
 
     def create_navigation(self):
@@ -501,7 +502,7 @@ class HistoricalFencingDrillsApp(MDApp):
         box.add_widget(self.combo_expand_widget)
         container.add_widget(box)
 
-        self.settings_tabs = MDTabs()
+        self.settings_tabs = MDTabs(anim_duration=0.5)
         self.settings_tabs.bind(on_tab_switch=self._switch_settings_tabs)
 
         for tab_label in (
@@ -654,7 +655,6 @@ class HistoricalFencingDrillsApp(MDApp):
             self.about_tabs.add_widget(tab)
 
         self.screen_3_populated = True
-        Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', False), 0)
 
     def _update_screen2(self, row, _):
         call_time, call_length, time_text, call_text, full_call_text, play_sound = row
@@ -681,7 +681,7 @@ class HistoricalFencingDrillsApp(MDApp):
 
         if 'checkboxes' in tab.ids:
             if not tab.ids['checkboxes'].table_populated:
-                tab.ids['checkboxes'].set_spinner(True)
+                # tab.ids['checkboxes'].set_spinner(True)
                 tab.ids['checkboxes'].create_table_layout()
         if 'cut_grid' in tab.ids:
             if len(tab.ids['cut_grid'].children) == 0:

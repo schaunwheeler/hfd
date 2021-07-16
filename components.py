@@ -1,4 +1,5 @@
 import os
+from functools import partial
 
 from kivy.properties import StringProperty
 from kivy.metrics import dp
@@ -83,7 +84,7 @@ class CheckboxTable(MDFloatLayout):
             j = (i + 1) / timing
             cells = [row, ] + self.col_items
             cells = cells[:]
-            from functools import partial
+
             Clock.schedule_once(partial(self.create_row, cells), j)
 
         self.table_populated = True
