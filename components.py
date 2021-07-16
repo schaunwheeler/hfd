@@ -68,7 +68,7 @@ class CheckboxTable(MDFloatLayout):
     def set_spinner(self, set_at):
         self.spinner.active = set_at
 
-    def create_table(self):
+    def create_table_layout(self):
         for col in (['', ] + self.col_items):
             lab = MDLabel(
                 text=col,
@@ -79,35 +79,41 @@ class CheckboxTable(MDFloatLayout):
             )
             self.table.add_widget(lab)
 
-        for row in self.row_items:
-            lab = MDLabel(
-                text=row,
-                font_style='Caption',
-                valign='center',
-                size_hint=(1 / self.n_cols, 1 / self.n_rows),
-                pos_hint={'center_x': 0.5, 'center_y': 0.5}
-            )
-            self.table.add_widget(lab)
-            self.set_spinner(False)
-            self.set_spinner(True)
-
-            for col in self.col_items:
-                transition_string = f'{row}|{col}'
-                lab = MDCheckbox(
-                    size_hint=(1 / 10, 1 / 19),
-                    pos_hint={'center_x': 0.5, 'center_y': 0.5},
-                    active=self.store.get(transition_string)['value']
-                )
-                lab.ids['transition'] = transition_string
-                lab.bind(active=self._set_transition)
-                self.checkbox_dict[transition_string] = lab
-                self.table.add_widget(lab)
+        for i, row in enumerate(self.row_items):
+            j = (i + 1) / 100
+            cells = [row, ] + self.col_items
+            cells = cells[:]
+            from functools import partial
+            Clock.schedule_once(partial(self.create_row, cells), j)
 
         self.table_populated = True
         if self.spinner.active:
             self.set_spinner(False)
             self.set_spinner(True)
-            Clock.schedule_once(lambda dt: self.set_spinner(False), 2.0)
+            Clock.schedule_once(lambda dt: self.set_spinner(False), j + 2.0)
+
+    def create_row(self, cells, dt):
+        row = cells.pop(0)
+        lab = MDLabel(
+            text=row,
+            font_style='Caption',
+            valign='center',
+            size_hint=(1 / self.n_cols, 1 / self.n_rows),
+            pos_hint={'center_x': 0.5, 'center_y': 0.5}
+        )
+        self.table.add_widget(lab)
+
+        for col in cells:
+            transition_string = f'{row}|{col}'
+            lab = MDCheckbox(
+                size_hint=(1 / 10, 1 / 19),
+                pos_hint={'center_x': 0.5, 'center_y': 0.5},
+                active=self.store.get(transition_string)['value']
+            )
+            lab.ids['transition'] = transition_string
+            lab.bind(active=self._set_transition)
+            self.checkbox_dict[transition_string] = lab
+            self.table.add_widget(lab)
 
     def _reset_transition_defaults(self, *_):
         for k, d in self.store.find():

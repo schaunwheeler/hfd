@@ -57,6 +57,9 @@ class HistoricalFencingDrillsApp(MDApp):
         self.guard_checkboxes = dict()
         self.settings = JsonStore('settings.json')
         self.transitions = JsonStore('transitions.json')
+        self.weights = JsonStore('weights.json')
+
+        self.compile_weight_dict()
 
     def build(self):
         # from kivy.utils import platform
@@ -121,28 +124,14 @@ class HistoricalFencingDrillsApp(MDApp):
         total_time = int(m) * 60 + int(s)
         min_size = int(self.min_combo_length_widget.text)
         max_size = int(self.max_combo_length_widget.text)
-        cut_weight = float(self.pct_widget.text.strip('%')) / 100
-        guard_weight = 1.0 - cut_weight
 
-        weight_dict = dict()
-        for k in self.cuts:
-            weight_dict[k] = cut_weight
-        for k in self.guards:
-            weight_dict[k] = guard_weight
-
-        manual_options = ('Manual')
+        manual_options = ('Manual', )
         if self.mode_widget.text in manual_options:
             transitions_dict = dict()
             for t, v in self.transitions.find():
                 if not v['value']:
                     continue
                 a, b = t.split('|')
-                if self.mode_widget.text == 'Manual (cuts only)':
-                    if (a in self.guards) or (b in self.guards):
-                        continue
-                if self.mode_widget.text == 'Manual (guards only)':
-                    if (a in self.cuts) or (b in self.cuts):
-                        continue
                 if a not in transitions_dict:
                     transitions_dict[a] = list()
                 transitions_dict[a].append(b)
@@ -152,7 +141,7 @@ class HistoricalFencingDrillsApp(MDApp):
             transitions_set = list(transitions_set)
 
             def draw_from_options(options):
-                weights = [weight_dict[o] for o in options]
+                weights = [self.weight_dict[o] for o in options]
                 if max(weights) == 0.0:
                     weights = [1.0] * len(weights)
 
@@ -192,7 +181,7 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return generator_function
 
-    def schedule_calls(self, *args, leading_n=10):
+    def schedule_calls(self, *_, leading_n=10):
         m, s = self.total_time_widget.text.split(':')
         total_time = int(m) * 60 + int(s) + leading_n
         for row in self._create_ready(leading_n):
@@ -516,12 +505,31 @@ class HistoricalFencingDrillsApp(MDApp):
 
         for tab_label in (
                 'General',
+                'Weights',
                 'Cut Transitions',
                 'Guard Transitions'
         ):
             tab = Tab(title=tab_label)
             if tab_label == 'General':
                 tab.add_widget(container)
+            elif tab_label == 'Weights':
+                from kivymd.uix.card import MDSeparator
+                container = MDBoxLayout(orientation='vertical')
+                cut_box = MDGridLayout(
+                    cols=3,
+                    padding=dp(20)
+                )
+                guard_box = MDGridLayout(
+                    cols=3,
+                    padding=dp(20)
+                )
+
+                container.add_widget(cut_box)
+                container.add_widget(MDSeparator())
+                container.add_widget(guard_box)
+                tab.add_widget(container)
+                tab.ids['cut_grid'] = cut_box
+                tab.ids['guard_grid'] = guard_box
             elif tab_label == 'Cut Transitions':
                 container = CheckboxTable(
                     row_items=self.cuts + self.guards,
@@ -770,14 +778,78 @@ class HistoricalFencingDrillsApp(MDApp):
         if 'checkboxes' in tab.ids:
             if not tab.ids['checkboxes'].table_populated:
                 tab.ids['checkboxes'].set_spinner(True)
-                Clock.schedule_once(lambda dt: tab.ids['checkboxes'].create_table(), 1)
+                tab.ids['checkboxes'].create_table_layout()
+        if 'cut_grid' in tab.ids:
+            if len(tab.ids['cut_grid'].children) == 0:
+                self._create_weight_table(tab)
+
+    def _create_weight_table(self, tab):
+
+        for cut in self.cuts:
+            box = MDBoxLayout(orientation='vertical', spacing=dp(0))
+            lab = MDLabel(
+                text=cut, font_style='H6',
+                pos_hint={'center_x': 0.5, 'center_y': 0.5},
+                size_hint=(1.0, 1.0),
+                halign='center',
+                valign='center'
+            )
+            ddc = DropdownClass(
+                menu_items=[str(v) for v in range(11)],
+                pos_hint={'center_x': 0.5, 'center_y': 0.5}
+            )
+            ddc.set_item(self.weights.get(cut)['weight'])
+            ddc.ids['key'] = cut
+            ddc.bind(text=self._set_weight)
+
+            box.add_widget(lab)
+            box.add_widget(ddc)
+            tab.ids['cut_grid'].add_widget(box)
+
+        for guard in self.guards:
+            box = MDBoxLayout(orientation='vertical', spacing=dp(0))
+            lab = MDLabel(
+                text=guard, font_style='H6',
+                pos_hint={'center_x': 0.5, 'center_y': 0.5},
+                size_hint=(1.0, 1.0),
+                halign='center',
+                valign='center'
+            )
+            ddc = DropdownClass(
+                menu_items=[str(v) for v in range(11)],
+                pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            )
+            ddc.set_item(self.weights.get(guard)['weight'])
+            ddc.ids['key'] = guard
+            ddc.bind(text=self._set_weight)
+
+            box.add_widget(lab)
+            box.add_widget(ddc)
+            tab.ids['guard_grid'].add_widget(box)
+
+    def _set_weight(self, widget, text):
+
+        self.weights.put(widget.ids['key'], **{'weight': text})
+        self.compile_weight_dict()
 
     def _switch_about_tabs(self, tabs, tab, label, tab_text):
 
         self.current_about_tab = tab_text
 
+    def compile_weight_dict(self):
+        self.weight_dict = dict()
+        cut_pct = float(self.settings.get("% cuts:")['text'].strip('%')) / 100
+        for k, d in self.weights.find():
+            v = int(d['weight'])
+            if k in self.cuts:
+                self.weight_dict[k] = v * cut_pct
+            elif k in self.guards:
+                self.weight_dict[k] = v * (1.0 - cut_pct)
+        # sum_weights = sum(self.weight_dict.values())
+        # self.weight_dict = {k: v / sum_weights for k, v in self.weight_dict.items()}
+
     def _disable_tabs(self):
-        manual_options = ('Manual')
+        manual_options = ('Manual', )
         flag = self.mode_widget.text not in manual_options
         for tab in self.settings_tabs.get_slides():
             if tab.title != 'General':
@@ -788,19 +860,26 @@ class HistoricalFencingDrillsApp(MDApp):
 
     def store_new_value(self, widget, text):
         key = widget.ids['title']
-        if key.upper() == 'Minimum combo:':
+
+        if key == 'Minimum combo:':
             a = self.min_combo_length_widget.text
             b = self.max_combo_length_widget.text
             if int(a) > int(b):
                 self.max_combo_length_widget.set_item(a)
-        if key.upper() == 'Maximum combo:':
+
+        if key == 'Maximum combo:':
             a = self.min_combo_length_widget.text
             b = self.max_combo_length_widget.text
             if int(b) < int(a):
                 self.min_combo_length_widget.set_item(b)
+
+        self.settings.put(key, text=text)
+
         if key == 'Mode:':
             self._disable_tabs()
-        self.settings.put(key, text=text)
+
+        if key == '% cuts':
+            self.compile_weight_dict()
 
     def change_value(self, _, text):
         self.call_diagram.pointer_position_code = text
@@ -820,5 +899,5 @@ class HistoricalFencingDrillsApp(MDApp):
 
 if __name__ == '__main__':
 
-    # Window.size = (720 / 2, 1280 / 2)
+    Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
