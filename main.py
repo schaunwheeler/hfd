@@ -3,244 +3,69 @@ import math
 from functools import partial
 
 from kivymd.app import MDApp
-from kivy.clock import Clock
-from kivy.uix.image import Image
-from kivy.uix.spinner import Spinner
-from kivy.core.audio import SoundLoader
-
-from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
-from kivy.uix.widget import Widget
-from kivy.graphics import Rectangle, Color, Line, Ellipse
+from kivy.clock import Clock
+from kivy.core.audio import SoundLoader
+from kivy.metrics import dp
 from kivy.storage.jsonstore import JsonStore
 
-from kivymd.uix.toolbar import MDToolbar
-from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.scrollview import ScrollView
+from kivy.graphics import Rectangle, Color
+from kivy.uix.image import Image
+
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.tab import MDTabs
+from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
 from kivymd.uix.label import MDLabel
+from kivymd.uix.card import MDSeparator
 
-
-class WrappedLabel(MDLabel):
-    # Based on https://stackoverflow.com/a/58227983
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(
-            width=lambda *x:
-            self.setter('text_size')(self, (self.width, None)),
-            texture_size=lambda *x: self.setter('height')(self, self.texture_size[1]))
-
-
-class CircleWidget(Widget):
-    def __init__(self, **kwargs):
-        super(CircleWidget, self).__init__(**kwargs)
-
-        self.pointer_position_code = None
-
-        with self.canvas:
-            self.color = Color(240, 255, 0, 1)
-            self.circle = Ellipse(
-                pos=self.center,
-                size=(self.width * 0.05, self.height * 0.05)
-            )
-
-        self.bind(pos=self.update_circle, size=self.update_circle)
-
-    def calculate_coordinates(self, *_):
-        center_x, center_y = self.center
-        x = self.width / 2
-        y = self.height / 2
-        part_x = x * 0.66
-        part_y = y * 0.66
-
-        offset = min(self.width * 0.05, self.height * 0.05)
-
-        if self.pointer_position_code is None:
-            return center_x - offset, center_y - offset
-        elif self.pointer_position_code == '9':
-            return center_x - offset, center_y - offset
-        elif self.pointer_position_code == '1':
-            return center_x - x - offset, center_y - y - offset
-        elif self.pointer_position_code == '2':
-            return center_x + x - offset, center_y - y - offset
-        elif self.pointer_position_code == '3':
-            return center_x - x - offset, center_y + y - offset
-        elif self.pointer_position_code == '4':
-            return center_x + x - offset, center_y + y - offset
-        elif self.pointer_position_code == '5':
-            return center_x - x - offset, center_y - offset
-        elif self.pointer_position_code == '6':
-            return center_x + x - offset, center_y - offset
-        elif self.pointer_position_code == '7':
-            return center_x - offset, center_y - y - offset
-        elif self.pointer_position_code == '8':
-            return center_x - offset, center_y + y - offset
-        elif self.pointer_position_code == '1t':
-            return center_x + part_x - offset, center_y + part_y - offset
-        elif self.pointer_position_code == '2t':
-            return center_x - part_x - offset, center_y + part_y - offset
-        elif self.pointer_position_code == '3t':
-            return center_x + part_x - offset, center_y - part_y - offset
-        elif self.pointer_position_code == '4t':
-            return center_x - part_x - offset, center_y - part_y - offset
-        elif self.pointer_position_code == '5t':
-            return center_x + part_x - offset, center_y - offset
-        elif self.pointer_position_code == '6t':
-            return center_x - part_x - offset, center_y - offset
-        elif self.pointer_position_code == '7t':
-            return center_x - offset, center_y + part_y - offset
-        elif self.pointer_position_code == '8t':
-            return center_x - offset, center_y - part_y - offset
-        else:
-            raise ValueError('Invalid pointer_position_code.')
-
-    def update_circle(self, *_):
-        offset = min(self.width * 0.05, self.height * 0.05)
-        self.circle.pos = self.calculate_coordinates()
-        self.circle.size = (offset * 2, offset * 2)
-
-        if self.pointer_position_code is None:
-            self.color.rgba = (0, 0, 0, 0)
-        else:
-            self.color.rgba = (240, 255, 0, 1)
-
-
-class RectangleWidget(Widget):
-    def __init__(self, **kwargs):
-        super(RectangleWidget, self).__init__(**kwargs)
-
-        self.pointer_position_code = '9'
-
-        with self.canvas:
-            Color(0, 0, 0, 0.1)
-            self.rect1 = Rectangle(
-                pos=self.center,
-                size=(-self.width / 2., self.height / 2.)
-            )
-
-            Color(0, 0, 0, 0.1)
-            self.rect2 = Rectangle(
-                pos=self.center,
-                size=(self.width / 2., self.height / 2.)
-            )
-
-            Color(0, 0, 0, 0.1)
-            self.rect3 = Rectangle(
-                pos=self.center,
-                size=(-self.width / 2., -self.height / 2.)
-            )
-
-            Color(0, 0, 0, 0.1)
-            self.rect4 = Rectangle(
-                pos=self.center,
-                size=(self.width / 2., -self.height / 2.)
-            )
-
-            self.line_1_4_color = Color(1, 1, 1, 0.9)
-            self.line_1_4 = Line(
-                points=[0, self.height, self.width, 0],
-                width=2
-            )
-            self.line_2_3_color = Color(1, 1, 1, 0.9)
-            self.line_2_3 = Line(
-                points=[0, self.height, self.width, 0],
-                width=2
-            )
-            self.line_5_6_color = Color(1, 1, 1, 0.9)
-            self.line_5_6 = Line(
-                points=[self.width, self.height / 2, 0, self.height / 2],
-                width=2
-            )
-            self.line_7_8_color = Color(1, 1, 1, 0.9)
-            self.line_7_8 = Line(
-                points=[self.width / 2, self.height, self.width / 2, 0],
-                width=2
-            )
-
-        self.bind(pos=self.update_rect, size=self.update_rect)
-        self.bind(pos=self.update_lines, size=self.update_lines)
-
-    def update_rect(self, *_):
-        self.rect1.pos = self.center
-        self.rect1.size = (-self.width / 2., self.height / 2.)
-
-        self.rect2.pos = self.center
-        self.rect2.size = (self.width / 2., self.height / 2.)
-
-        self.rect3.pos = self.center
-        self.rect3.size = (-self.width / 2., -self.height / 2.)
-
-        self.rect4.pos = self.center
-        self.rect4.size = (self.width / 2., -self.height / 2.)
-
-        self.line_1_4.points = [
-            self.center[0] + (self.width / 2),
-            self.center[1] + (self.height / 2),
-            self.center[0] - (self.width / 2),
-            self.center[1] - (self.height / 2)
-        ]
-
-        self.line_2_3.points = [
-            self.center[0] - (self.width / 2),
-            self.center[1] + (self.height / 2),
-            self.center[0] + (self.width / 2),
-            self.center[1] - (self.height / 2)
-        ]
-
-        self.line_5_6.points = [
-            self.center[0] + (self.width / 2),
-            self.center[1],
-            self.center[0] - (self.width / 2),
-            self.center[1]
-        ]
-
-        self.line_7_8.points = [
-            self.center[0],
-            self.center[1] + (self.height / 2),
-            self.center[0],
-            self.center[1] - (self.height / 2)
-        ]
-
-    def update_lines(self, *_):
-        self.line_1_4_color.rgba = (1, 1, 1, 0.9)
-        self.line_2_3_color.rgba = (1, 1, 1, 0.9)
-        self.line_5_6_color.rgba = (1, 1, 1, 0.9)
-        self.line_7_8_color.rgba = (1, 1, 1, 0.9)
-
-        self.line_1_4.width = 2
-        self.line_2_3.width = 2
-        self.line_5_6.width = 2
-        self.line_7_8.width = 2
-
-        if self.pointer_position_code in ('1', '4'):
-            self.line_1_4_color.rgba = (240, 255, 0, 1)
-            self.line_1_4.width = 10
-        elif self.pointer_position_code in ('2', '3'):
-            self.line_2_3_color.rgba = (240, 255, 0, 1)
-            self.line_2_3.width = 10
-        elif self.pointer_position_code in ('5', '6'):
-            self.line_5_6_color.rgba = (240, 255, 0, 1)
-            self.line_5_6.width = 10
-        elif self.pointer_position_code in ('7', '8'):
-            self.line_7_8_color.rgba = (240, 255, 0, 1)
-            self.line_7_8.width = 10
-        elif self.pointer_position_code in (None, '9'):
-            pass
-        else:
-            raise ValueError(f'Invalid pointer_position_code: {self.pointer_position_code}')
+from utils import clock_time_from_seconds
+from components import (
+    Tab, WrappedLabel, ImageCard, CheckboxTable, DropdownTable,
+    LabeledDropdown, ScrollScreen
+)
+from graphics import CircleWidget, RectangleWidget
 
 
 class HistoricalFencingDrillsApp(MDApp):
 
     def __init__(self, **kwargs):
         super(HistoricalFencingDrillsApp, self).__init__(**kwargs)
+
+        # placeholders for settings widgets
+        self.mode_widget = None
+        self.pct_widget = None
         self.total_time_widget = None
         self.call_wait_widget = None
         self.combo_wait_widget = None
         self.combo_repeat_widget = None
         self.combo_expand_widget = None
+        self.min_combo_length_widget = None
+        self.max_combo_length_widget = None
+        self.cut_transitions = None
+        self.guard_transitions = None
+        self.cut_box = None
+        self.guard_box = None
+
+        # placeholders for layouts
+        self.screen3 = None
+        self.screen_3_populated = False
+
+        # Default settings
+        self.current_settings_tab = 'General'
+        self.current_about_tab = 'Swage'
+        self.cuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+        self.guards = ['H', 'rH', 'L', 'rL', 'M', 'rM', 'G', 'rG', 'T']
+        self.cut_checkboxes = dict()
+        self.guard_checkboxes = dict()
         self.settings = JsonStore('settings.json')
+        self.transitions = JsonStore('transitions.json')
+        self.weights = JsonStore('weights.json')
+        self.weight_dict = dict()
+        self.compile_weight_dict()
 
     def build(self):
         # from kivy.utils import platform
@@ -253,14 +78,11 @@ class HistoricalFencingDrillsApp(MDApp):
 
         self.theme_cls.primary_palette = "Gray"
         parent = self.create_navigation()
+
         return parent
 
     def create_navigation(self):
         parent = MDBoxLayout(orientation='vertical')
-        toolbar = MDToolbar(
-            title='Historical Fencing Drills',
-            anchor_title='center'
-        )
         bottom_navigation = MDBottomNavigation()
         bottom_navigation_item1 = MDBottomNavigationItem(
             name='screen 1',
@@ -276,11 +98,10 @@ class HistoricalFencingDrillsApp(MDApp):
         )
         bottom_navigation_item3 = MDBottomNavigationItem(
             name='screen 3',
-            text='Help',
+            text='About',
             icon='book',
-            on_tab_press=self.open_screen3
+            on_tab_press=lambda x: self._switch_about_tabs(None, None, None, self.current_about_tab)
         )
-        parent.add_widget(toolbar)
 
         screen1 = self._create_screen_1()
         screen2 = self._create_screen_2()
@@ -298,12 +119,72 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return parent
 
-    def open_screen3(self, *_):
-        self.cancel_all_events()
-        self.set_dims()
+    def _create_pattern_generator(self):
+        m, s = self.total_time_widget.widget.text.split(':')
+        total_time = int(m) * 60 + int(s)
+        min_size = int(self.min_combo_length_widget.widget.text)
+        max_size = int(self.max_combo_length_widget.widget.text)
 
-    def schedule_calls(self, _):
-        for row in self._create_buffer():
+        manual_options = ('Manual', )
+        if self.mode_widget.widget.text in manual_options:
+            transitions_dict = dict()
+            for t, v in self.transitions.find():
+                if not v['value']:
+                    continue
+                a, b = t.split('|')
+                if a not in transitions_dict:
+                    transitions_dict[a] = list()
+                transitions_dict[a].append(b)
+
+            transitions_set = set(transitions_dict.keys())
+            transitions_dict = {k: list(transitions_set.intersection(v)) for k, v in transitions_dict.items()}
+            transitions_set = list(transitions_set)
+
+            def draw_from_options(options):
+                weights = [self.weight_dict[o] for o in options]
+                if max(weights) == 0.0:
+                    weights = [1.0] * len(weights)
+
+                return random.choices(options, weights=weights)[0]
+
+            def generator_function():
+                call = draw_from_options(transitions_set)
+                while True:
+                    combo_length = random.randrange(min_size, max_size + 1)
+                    call = draw_from_options(transitions_dict[call])
+                    combo = [call]
+                    while len(combo) < combo_length:
+                        call = draw_from_options(transitions_dict[call])
+                        combo.append(call)
+
+                    yield combo
+
+        elif self.mode_widget.widget.text == 'Pre-programmed':
+            with open('assets/combos.txt', 'r') as f:
+                patterns = [
+                    line.strip().split(' ')
+                    for line in f.readlines()
+                ]
+
+            patterns = random.choices(
+                [
+                    pat for pat in patterns
+                    if (len(pat) >= min_size) and (len(pat) <= max_size)
+                ],
+                k=total_time
+            )
+
+            def generator_function():
+                yield random.choice(patterns)
+        else:
+            raise ValueError('Valid values are `Pre-programmed` and `Custom`.')
+
+        return generator_function
+
+    def schedule_calls(self, *_, leading_n=10):
+        m, s = self.total_time_widget.widget.text.split(':')
+        total_time = int(m) * 60 + int(s) + leading_n
+        for row in self._create_ready(leading_n):
             Clock.schedule_once(
                 partial(
                     self._update_screen2,
@@ -311,239 +192,294 @@ class HistoricalFencingDrillsApp(MDApp):
                 ),
                 row[0]
             )
-
-    @staticmethod
-    def _get_patterns(size=None):
-
-        with open('assets/combos.txt', 'r') as f:
-            patterns = [
-                line.strip().split(' ')
-                for line in f.readlines()
-            ]
-
-        if size is not None:
-            patterns = [
-                pat
-                for pat in patterns
-                if len(pat) == size
-            ]
-
-        random.shuffle(patterns)
-
-        return patterns
-
-    def _update_screen2(self, row, _):
-        call_time, call_length, time_text, call_text, full_call_text, play_sound = row
-        self.time_label.text = time_text
-        self.call_label.text = call_text
-        self.full_call_label.text = full_call_text
-
-        if play_sound:
-            self.call_diagram.pointer_position_code = call_text
-            self.call_diagram.update_lines()
-            self.call_pointer.pointer_position_code = call_text
-            self.call_pointer.update_circle()
-
-            play_sound.play()
-
-    def _create_buffer(self):
-        call_wait = convert_value(self.call_wait_widget.text)
-        combo_wait = convert_value(self.combo_wait_widget.text)
-        total_time = convert_value(self.total_time_widget.text)
-        combo_size = convert_value(self.combo_size_widget.text)
-        combo_expand = convert_value(self.combo_expand_widget.text)
-        combo_repeat = convert_value(self.combo_repeat_widget.text)
-
-        patterns = self._get_patterns(combo_size)
-
-        sounds = {
-            s: SoundLoader.load(f'assets/sounds/{s}.wav')
-            for s in set().union(*patterns)
-        }
-
-        buffer = list()
-        i = 0
-        time_left = total_time + 10
-        while i < (total_time + 10):
-            if i < 10:
-
-                row = (i, None, self.total_time_widget.text, 'READY', str(10 - i), None)
-                buffer.append(row)
-                time_left -= 1
-                i += 1
-            elif i == 10:
-                time_string = clock_time_from_seconds(round(time_left))
-                row = (i, None, time_string, 'BEGIN', '', None)
-                buffer.append(row)
-                time_left -= 1
-                i += 1
-            else:
-                if len(patterns) == 0:
-                    patterns = self._get_patterns(combo_size)
-
-                pat = patterns.pop()
-                start = 2 if combo_expand else len(pat)
-                for end in range(start, len(pat) + 1):
-                    for call in range(end):
-                        call_text = pat[call]
-                        call_list = ' '.join(pat[:call + 1])
-                        call_sound = sounds[call_text]
-                        call_length = call_sound.length + call_wait
-
-                        time_string = clock_time_from_seconds(math.floor(time_left))
-                        row = (i, call_length, time_string, call_text, call_list, call_sound)
-                        buffer.append(row)
-
-                        i += call_length
-                        time_left -= call_length
-                        if time_left <= 0:
-                            break
-
-                    if time_left <= 0:
-                        break
-                    i += combo_wait
-                    time_left -= combo_wait
-
-                if combo_repeat and (time_left > 0):
-                    end = len(pat)
-                    for call in range(end):
-                        call_text = pat[call]
-                        call_list = ' '.join(pat[:call + 1])
-                        call_sound = sounds[call_text]
-                        call_length = call_sound.length + call_wait
-
-                        time_string = clock_time_from_seconds(math.floor(time_left))
-                        row = (i, call_length, time_string, call_text, call_list, call_sound)
-                        buffer.append(row)
-
-                        i += call_length
-                        time_left -= call_length
-                        if time_left <= 0:
-                            break
-
-                    if time_left <= 0:
-                        break
-                    i += combo_wait
-                    time_left -= combo_wait
-
-        j = 12
-        prev_row = buffer[11]
-        for row in buffer:
-            if j >= (total_time + 10):
+        prev_row = [leading_n + 1]
+        # (i, call_length, time_string, call_text, call_list, call_sound
+        for row in self._create_buffer(leading_n):
+            if row[0] > total_time:
                 break
-            val = row[0]
-            while math.floor(val) >= j:
-                new_time = total_time + 9 - j
-                if new_time <= 0:
-                    break
-                time_string = clock_time_from_seconds(new_time)
-                new_row = (j, None, time_string) + prev_row[3:-1] + (None, )
-                buffer.append(new_row)
-                j += 1
+            base_i_prev = math.floor(prev_row[0])
+            base_i = math.floor(row[0])
+            for base_i in range(base_i_prev + 1, base_i + 1):
+                time_string = clock_time_from_seconds(total_time - base_i)
+                filler_row = (
+                    base_i,
+                    row[0] - base_i,
+                    time_string,
+                    prev_row[3],
+                    prev_row[4],
+                    None
+                )
+                Clock.schedule_once(
+                    partial(
+                        self._update_screen2,
+                        filler_row
+                    ),
+                    filler_row[0]
+                )
+
+            Clock.schedule_once(
+                partial(
+                    self._update_screen2,
+                    row
+                ),
+                row[0]
+            )
             prev_row = row
 
-        buffer = sorted(buffer, key=lambda t: t[0])
-        buffer.append((
-            total_time + 11,
+        final_row = (
+            row[0] + 1,
             0,
-            self.total_time_widget.text,
+            self.total_time_widget.widget.text,
             'READY',
             '',
             None
-        ))
+        )
+        Clock.schedule_once(
+            partial(
+                self._update_screen2,
+                final_row
+            ),
+            final_row[0]
+        )
 
-        return buffer
+    def _create_ready(self, leading_n=10):
+        for i in range(leading_n + 1):
+            if i < leading_n:
+                row = (i, None, self.total_time_widget.widget.text, 'READY', str(leading_n - i), None)
+            else:
+                row = (i, None, self.total_time_widget.widget.text, 'BEGIN', '', None)
+
+            yield row
+
+    def _create_buffer(self, leading_n=10):
+
+        call_wait = float(self.call_wait_widget.widget.text)
+        combo_wait = float(self.combo_wait_widget.widget.text)
+        m, s = self.total_time_widget.widget.text.split(':')
+        total_time = int(m) * 60 + int(s)
+        combo_expand = self.combo_expand_widget.widget.text == 'ON'
+        combo_repeat = self.combo_repeat_widget.widget.text == 'ON'
+
+        pattern_generator = self._create_pattern_generator()
+
+        sounds = {
+            s: SoundLoader.load(f'assets/sounds/{s}.wav')
+            for s in (self.cuts + self.guards)
+        }
+
+        i = leading_n + 1
+        for pat in pattern_generator():
+
+            start = 2 if combo_expand else len(pat)
+            for end in range(start, len(pat) + 1):
+                for call in range(end):
+                    call_text = pat[call]
+                    call_list = ' '.join(pat[:call + 1])
+                    call_sound = sounds[call_text]
+                    call_length = call_sound.length + call_wait
+                    if i == (leading_n + 1):
+                        time_string = clock_time_from_seconds(math.floor(total_time - 1))
+                    else:
+                        time_string = clock_time_from_seconds(math.floor(total_time))
+                    row = (
+                        i,
+                        call_length,
+                        time_string,
+                        call_text,
+                        call_list,
+                        call_sound
+                    )
+                    i += call_length
+                    total_time -= call_length
+                    yield row
+
+                i += combo_wait
+                total_time -= combo_wait
+
+            if combo_repeat:
+                end = len(pat)
+                for call in range(end):
+                    call_text = pat[call]
+                    call_list = ' '.join(pat[:call + 1])
+                    call_sound = sounds[call_text]
+                    call_length = call_sound.length + call_wait
+                    time_string = clock_time_from_seconds(math.floor(total_time))
+                    row = (
+                        i,
+                        call_length,
+                        time_string,
+                        call_text,
+                        call_list,
+                        call_sound
+                    )
+                    i += call_length
+                    total_time -= call_length
+                    yield row
+
+                i += combo_wait
+                total_time -= combo_wait
 
     def _create_screen_1(self):
 
-        container = MDGridLayout(
-            cols=2
+        container = MDGridLayout(cols=1, padding=dp(10), spacing=dp(10))
+        kwargs = dict(
+            store=self.settings,
+            value_key='value',
+            width_mult=2,
+            cols=1
         )
 
-        title = MDLabel(text='Round duration (minutes):', font_style='H6')
-        self.total_time_widget = Spinner(
-            text=self.settings.get('Round duration (minutes):')['text'],
-            values=[str(h).zfill(2) + ':00' for h in range(1, 20)],
-            size_hint=(0.35, 0.2),
-            pos_hint={'center_x': .0, 'center_y': .0}
+        mode_box = MDGridLayout(
+            cols=2,
+            rows=1,
+            spacing=[dp(5), dp(0)]
         )
-        self.total_time_widget.ids['title'] = title
-        self.total_time_widget.bind(text=self.store_new_value)
-        container.add_widget(title)
+
+        self.mode_widget = LabeledDropdown(
+            label='Mode:',
+            options=[
+                'Pre-programmed',
+                'Manual'
+            ],
+            size_hint=(0.8, 1.0),
+            pos_hint={'center_x': .4, 'center_y': 0.5},
+            **kwargs
+        )
+        self.mode_widget.widget.bind(text=self.validate_values)
+        mode_box.add_widget(self.mode_widget)
+
+        self.pct_widget = LabeledDropdown(
+            label='% cuts:',
+            options=[f"{v / 100:.0%}" for v in range(0, 105, 5)],
+            size_hint=(0.2, 1.0),
+            pos_hint={'center_x': .9, 'center_y': 0.5},
+            **kwargs
+        )
+        self.pct_widget.widget.bind(text=self.validate_values)
+        mode_box.add_widget(self.pct_widget)
+
+        container.add_widget(mode_box)
+
+        self.total_time_widget = LabeledDropdown(
+            label='Drill duration:',
+            options=[
+                str(h).zfill(2) + flag
+                for h in range(1, 20)
+                for flag in (':00', ':30')
+            ][:-1],
+            **kwargs
+        )
         container.add_widget(self.total_time_widget)
 
-        title = MDLabel(text='Pause between calls (seconds):', font_style='H6')
-        self.call_wait_widget = Spinner(
-            text=self.settings.get('Pause between calls (seconds):')['text'],
-            values=[str(x / 100) for x in range(5, 205, 5)],
-            size_hint=(0.35, 0.2),
-            pos_hint={'center_x': .0, 'center_y': .0}
+        pause_box = MDGridLayout(cols=2, rows=1, spacing=[dp(5), dp(0)])
+        self.call_wait_widget = LabeledDropdown(
+            label='Seconds after call:',
+            options=[str(x / 100) for x in range(5, 205, 5)],
+            **kwargs
         )
-        self.call_wait_widget.ids['title'] = title
-        self.call_wait_widget.bind(text=self.store_new_value)
-        container.add_widget(title)
-        container.add_widget(self.call_wait_widget)
+        pause_box.add_widget(self.call_wait_widget)
 
-        title = MDLabel(text='Pause between combos (seconds):', font_style='H6')
-        self.combo_wait_widget = Spinner(
-            text=self.settings.get('Pause between combos (seconds):')['text'],
-            values=[str(x / 100) for x in range(5, 205, 5)],
-            size_hint=(0.35, 0.2),
-            pos_hint={'center_x': .0, 'center_y': .0}
+        self.combo_wait_widget = LabeledDropdown(
+            label='Seconds after combo:',
+            options=[str(x / 100) for x in range(5, 205, 5)],
+            **kwargs
         )
-        self.combo_wait_widget.ids['title'] = title
-        self.combo_wait_widget.bind(text=self.store_new_value)
-        container.add_widget(title)
-        container.add_widget(self.combo_wait_widget)
+        pause_box.add_widget(self.combo_wait_widget)
 
-        patterns = self._get_patterns()
-        size_dict = dict()
-        for pat in patterns:
-            size = len(pat)
-            size_dict[size] = size_dict.get(size, 0) + 1
+        container.add_widget(pause_box)
 
-        widget_values = [f'{a} ({b} drills)' for a, b in sorted(size_dict.items())]
-        title = MDLabel(text='Combo size:', font_style='H6')
-        self.combo_size_widget = Spinner(
-            text=self.settings.get('Combo size:')['text'],
-            values=widget_values,
-            size_hint=(0.35, 0.2),
-            pos_hint={'center_x': .0, 'center_y': .0}
+        length_box = MDGridLayout(cols=2, rows=1, spacing=[dp(5), dp(0)])
+
+        self.min_combo_length_widget = LabeledDropdown(
+            label='Minimum combo:',
+            options=[str(v) for v in range(2, 11)],
+            **kwargs
         )
-        self.combo_size_widget.ids['title'] = title
-        self.combo_size_widget.bind(text=self.store_new_value)
-        container.add_widget(title)
-        container.add_widget(self.combo_size_widget)
+        self.min_combo_length_widget.widget.bind(text=self.validate_values)
+        length_box.add_widget(self.min_combo_length_widget)
 
-        title = MDLabel(text='Repeat full combo at end:', font_style='H6')
-        self.combo_repeat_widget = Spinner(
-            text=self.settings.get('Repeat full combo at end:')['text'],
-            values=[str(x) for x in range(11)],
-            size_hint=(0.35, 0.2),
-            pos_hint={'center_x': .0, 'center_y': .0}
+        self.max_combo_length_widget = LabeledDropdown(
+            label='Maximum combo:',
+            options=[str(v) for v in range(2, 11)],
+            **kwargs
         )
-        self.combo_repeat_widget.ids['title'] = title
-        self.combo_repeat_widget.bind(text=self.store_new_value)
-        container.add_widget(title)
+        self.max_combo_length_widget.widget.bind(text=self.validate_values)
+        length_box.add_widget(self.max_combo_length_widget)
+
+        container.add_widget(length_box)
+
+        kwargs['width_mult'] = 100
+        self.combo_repeat_widget = LabeledDropdown(
+            label='Repeat full combo at end:',
+            options=['OFF', 'ON'],
+            **kwargs
+        )
         container.add_widget(self.combo_repeat_widget)
 
-        title = MDLabel(text='Progressively expand combos:', font_style='H6')
-        self.combo_expand_widget = Spinner(
-            text=self.settings.get('Progressively expand combos:')['text'],
-            values=['OFF', 'ON'],
-            size_hint=(0.35, 0.2),
-            pos_hint={'center_x': .0, 'center_y': .0}
+        self.combo_expand_widget = LabeledDropdown(
+            label='Progressively expand combos:',
+            options=['OFF', 'ON'],
+            **kwargs
         )
-        self.combo_expand_widget.ids['title'] = title
-        self.combo_expand_widget.bind(text=self.store_new_value)
-        container.add_widget(title)
         container.add_widget(self.combo_expand_widget)
 
-        return container
+        self.settings_tabs = MDTabs(anim_duration=0.5)
+        self.settings_tabs.bind(on_tab_switch=self._switch_settings_tabs)
 
-    def store_new_value(self, widget, text):
-        key = widget.ids['title'].text
-        self.settings.put(key, text=text)
+        for tab_label in (
+                'General',
+                'Weights',
+                'Cut Transitions',
+                'Guard Transitions'
+        ):
+            tab = Tab(title=tab_label)
+            if tab_label == 'General':
+                tab.add_widget(container)
+            elif tab_label == 'Weights':
+
+                container = MDBoxLayout(orientation='vertical')
+                self.cut_box = DropdownTable(
+                    items=self.cuts,
+                    options=[str(x) for x in range(11)],
+                    store=self.weights,
+                    shape=(3, 3),
+                    value_key='value',
+                    create_table=False
+                )
+                self.cut_box.bind(calls=self.compile_weight_dict)
+                self.guard_box = DropdownTable(
+                    items=self.guards,
+                    options=[str(x) for x in range(11)],
+                    store=self.weights,
+                    shape=(3, 3),
+                    value_key='value',
+                    create_table=False
+                )
+                self.guard_box.bind(calls=self.compile_weight_dict)
+                container.add_widget(self.cut_box)
+                container.add_widget(MDSeparator())
+                container.add_widget(self.guard_box)
+                tab.add_widget(container)
+            elif tab_label == 'Cut Transitions':
+                self.cut_transitions = CheckboxTable(
+                    row_items=self.cuts + self.guards,
+                    col_items=self.cuts,
+                    store=self.transitions,
+                    create_table=False
+                )
+                tab.add_widget(self.cut_transitions)
+            elif tab_label == 'Guard Transitions':
+                self.guard_transitions = CheckboxTable(
+                    row_items=self.cuts + self.guards,
+                    col_items=self.guards,
+                    store=self.transitions,
+                    create_table=False
+                )
+                tab.add_widget(self.guard_transitions)
+
+            self.settings_tabs.add_widget(tab)
+        self._disable_tabs()
+        return self.settings_tabs
 
     def _create_screen_2(self):
         container = MDFloatLayout()
@@ -556,7 +492,7 @@ class HistoricalFencingDrillsApp(MDApp):
             )
 
         self.time_label = MDLabel(
-            text=self.total_time_widget.text,
+            text=self.total_time_widget.widget.text,
             halign='center',
             font_style='H2',
             pos_hint={'center_x': .5, 'center_y': .9},
@@ -600,147 +536,209 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return container
 
-    def _create_screen_3(self):
+    def _create_screen_3(self, *_):
+        container = MDFloatLayout()
+        self.about_tabs = MDTabs()
+        self.about_tabs.bind(on_tab_switch=self._switch_about_tabs)
+        container.add_widget(self.about_tabs)
 
-        self.scroll_container = ScrollView(
-            do_scroll_x=False
-        )
+        for tab_label in (
+                'Swage',
+                'Cuts and Guards',
+                'Settings'
+        ):
+            tab = Tab(title=tab_label)
+            if tab_label == 'Swage':
+                self.scroll_container1 = ScrollScreen(
+                    item_list=[
+                        {
+                            '_pattern': 'text',
+                            'text': 'Swage',
+                            'markup': True,
+                            'font_style': 'H3',
+                            'halign': 'left'
+                        },
+                        {
+                            '_pattern': 'textfile',
+                            'text': 'assets/texts/paragraph1.txt',
+                            'font_style': 'Body1',
+                            'halign': 'left',
+                            'markup': True
+                        }
+                    ],
+                    do_scroll_x=False
+                )
+                tab.add_widget(self.scroll_container1)
 
-        from kivy.uix.gridlayout import GridLayout
-        self.container = GridLayout(
-            cols=1, spacing=10, size_hint_x=1, size_hint_y=None
-        )
-        self.container.bind(minimum_height=self.container.setter('height'))
+            elif tab_label == 'Cuts and Guards':
+                image_files = {
+                    'fiore_getty.png': "[i]The Segno della Spada[/i] of Fiore dei Libieri, 1409.",
+                    'vadi_gladiatoria.jpg': "Filippo Vadi’s [i]De Arte Gladiatoria[/i], c.1482",
+                    'marozzo_opera.png': "Achille Marozzo's [i]Opera Nova[/i], 1536.",
+                    'meyer_1560_end.png': "Cutting drill diagrams from the end of Joachim Meyer's first manual, 1561.",
+                    'meyer_1570_longsword.png': "Longsword cut patterns from Joachim Meyer's second manual, 1570.",
+                    'meyer_1570_dussack.gif': "Instruction for Dussak from Joachim Meyer's second manual, 1570.",
+                    'fabris_science.png': "Salvatore Fabris's [i]Science and Practice of Arms[/i], 1606.",
+                    'marchant_rules.png': "Le Marchant’s [i]Rules and Regulations for the Sword Exercise of the Cavalry[/i], 1796.",
+                    'starzewski_fencing.png': "Michal Starzewski's [i]On Fencing[/i], 1830.",
+                    'angelo_infantry.png': "Angelo the Younger's [i]Infantry Sword Exercises[/i], 1845.",
+                    'burton_exercises.png': "Richard F. Burton's [i]The New Sword Exercise for Infantry[/i], 1876.",
+                    'happo_giri.png': "[i]The Happo Giri[/i] of Toyama Ryu Nakamura-ha, 1952.",
+                    'self_defense.png': "A diagram commonly used in modern self-defense courses.",
+                }
 
-        self.paragraph1 = WrappedLabel(
-            text=(
-                "In the 1560s, Joachim Meyer created a manuscript "
-                "for one of his private students, providing instruction "
-                "in longsword, dussack, and side sword. Though less "
-                "extensive than Meyer's later 1570 publication, the early manuscript "
-                "contained several cutting diagrams that serve as a useful basis"
-                "for constructing individual drills."
-            ),
-            halign='center',
-            font_style='Body1',
-            size_hint_y=None,
-            size_hint_x=1,
-            text_size=(None, None)
-        )
+                self.scroll_container2 = ScrollScreen(
+                    item_list=[
+                        {
+                            '_pattern': 'textfile',
+                            'text': 'assets/texts/paragraph2a.txt',
+                            'font_style': 'Body1',
+                            'halign': 'left',
+                            'markup': True
+                        },
+                        {
+                            '_pattern': 'imagecard',
+                            'image_list': image_files,
+                            'image_path': 'assets/images/'
+                        },
+                        {
+                            '_pattern': 'textfile',
+                            'text': 'assets/texts/paragraph2b.txt',
+                            'font_style': 'Body1',
+                            'halign': 'left',
+                            'markup': True
+                        },
+                        {
+                            '_pattern': 'image',
+                            'source': 'assets/images/cut_and_thrust_abbreviations.png'
+                        },
+                    ],
+                    do_scroll_x=False
+                )
+                tab.add_widget(self.scroll_container2)
 
-        self.image1 = Image(
-            source='assets/images/meyer_ms.jpg',
-            allow_stretch=True,
-            keep_ratio=True,
-            size_hint_y=None,
-            size_hint_x=None,
-            width=self.container.width,
-            height=self.container.width,
-        )
+            elif tab_label == 'Settings':
+                self.scroll_container3 = ScrollScreen(
+                    item_list=[
+                        {
+                            '_pattern': 'textfile',
+                            'text': 'assets/texts/paragraph3.txt',
+                            'font_style': 'Body1',
+                            'halign': 'left',
+                            'markup': True
+                        }
+                    ],
+                    do_scroll_x=False
+                )
+                tab.add_widget(self.scroll_container3)
 
-        self.paragraph2 = WrappedLabel(
-            text=(
-                "This app adapts those cutting diagrams to provide audio "
-                "callouts of cut and thrust combinations to serve for individual "
-                "training. The app assumes a simplified system of eight cuts and "
-                "9 thrusts. The cuts are illustrated here, witih the cut begining "
-                "at the position of its respective number and continuing along the "
-                "line that extends from that number. This differs from the user "
-                "interface, where the yellow dot marks where the cut should end. The"
-                "one addition 'cut' - the '9' - is actually a thrust, to center of"
-                "the body."
-            ),
-            halign='center',
-            font_style='Body1',
-            size_hint_y=None,
-            size_hint_x=1,
-            text_size=(None, None)
-        )
+            self.about_tabs.add_widget(tab)
+        return container
 
-        self.image2 = Image(
-            source='assets/images/cut_patterns.png',
-            allow_stretch=True,
-            keep_ratio=True,
-            size_hint_y=None,
-            size_hint_x=None,
-            width=self.container.width,
-            height=self.container.width
-        )
+    def _update_screen2(self, row, _):
+        call_time, call_length, time_text, call_text, full_call_text, play_sound = row
+        self.time_label.text = time_text
+        self.call_label.text = call_text
+        self.full_call_label.text = full_call_text
 
-        self.paragraph3 = WrappedLabel(
-            text=(
-                "The app provides multiple ways to adjust the training program:\n\n"
-                "   \u2022 [b]Round duration (minutes):[/b] the amount of time "
-                "you want to train for.\n\n"
-                "   \u2022 [b]Pause between calls (seconds):[/b] the number of seconds "
-                "to wait calling out the next cut or thrust.\n\n"
-                "   \u2022 [b]Pause between combos (seconds):[/b] the number of seconds "
-                "to wait after a combination of multiple cuts and/or thrusts have been called out.\n\n"
-                "   \u2022 [b]Combo size:[/b] this indicates the numbers of unique"
-                "drill combinations the app has available for each length. For example, if "
-                "'4' is selected, then each drill will involve four cuts.\n\n"
-                "   \u2022 [b]Repeat full combo at end:[/b] the number of times to repeat "
-                "the combo before moving on to the next one. If progressive expansion is on, "
-                "then the repetition will only apply to the full combo, not each progressive subset.\n\n"
-                "   \u2022 [b]Progressively expand combos:[/b] if ON, the app will "
-                " start by calling out hte first two moves of the combo, then expand to "
-                " three, then four, and so on, until the full combo is recited.\n\n"
-            ),
-            markup=True,
-            halign='center',
-            font_style='Body1',
-            size_hint_y=None,
-            size_hint_x=1,
-            text_size=(None, None)
-        )
+        if call_text == 'READY':
+            self.call_diagram.pointer_position_code = None
+            self.call_diagram.update_lines()
+            self.call_pointer.pointer_position_code = None
+            self.call_pointer.update_circle()
+        elif play_sound:
+            self.call_diagram.pointer_position_code = call_text
+            self.call_diagram.update_lines()
+            self.call_pointer.pointer_position_code = call_text
+            self.call_pointer.update_circle()
 
-        self.container.add_widget(self.paragraph1)
-        self.container.add_widget(self.image1)
-        self.container.add_widget(self.paragraph2)
-        self.container.add_widget(self.image2)
-        self.container.add_widget(self.paragraph3)
+            play_sound.play()
 
-        self.scroll_container.add_widget(self.container)
+    def _switch_settings_tabs(self, tabs, tab, label, tab_text):
 
-        return self.scroll_container
+        self.current_settings_tab = tab_text
 
-    def set_dims(self, *_):
-        width = Window.width
-        adjusted_width = width  # * 0.66
-        self.image1.width = adjusted_width
-        self.image1.height = adjusted_width / self.image1.image_ratio
-        self.image2.width = adjusted_width
-        self.image2.height = adjusted_width / self.image2.image_ratio
+        if tab_text == 'Cut Transitions':
+            if not self.cut_transitions.table_populated:
+                Clock.schedule_once(lambda dt: self.cut_transitions.append_table(), 0.5)
+        if tab_text == 'Guard Transitions':
+            if not self.guard_transitions.table_populated:
+                Clock.schedule_once(lambda dt: self.guard_transitions.append_table(), 0.5)
+        if tab_text == 'Weights':
+            if not self.cut_box.table_populated:
+                Clock.schedule_once(lambda dt: self.cut_box.append_table(), 0.5)
+            if not self.guard_box.table_populated:
+                Clock.schedule_once(lambda dt: self.guard_box.append_table(), 0.5)
+
+    def _switch_about_tabs(self, tabs, tab, label, tab_text):
+
+        self.cancel_all_events()
+        self.current_about_tab = tab_text
+        if tab_text == 'Swage':
+            if not self.scroll_container1.screen_populated:
+                Clock.schedule_once(lambda df: self.scroll_container1.fill_container(), 0.5)
+        if tab_text == 'Cuts and Guards':
+            if not self.scroll_container2.screen_populated:
+                Clock.schedule_once(lambda df: self.scroll_container2.fill_container(), 0.5)
+        if tab_text == 'Settings':
+            if not self.scroll_container3.screen_populated:
+                Clock.schedule_once(lambda df: self.scroll_container3.fill_container(), 0.5)
+
+    def compile_weight_dict(self, *_):
+
+        self.weight_dict = dict()
+        cut_pct = float(self.settings.get("% cuts:")['value'].strip('%')) / 100
+        for k, d in self.weights.find():
+            v = int(d['value'])
+            if k in self.cuts:
+                self.weight_dict[k] = v * cut_pct
+            elif k in self.guards:
+                self.weight_dict[k] = v * (1.0 - cut_pct)
+
+    def _disable_tabs(self):
+        manual_options = ('Manual', )
+        flag = self.mode_widget.widget.text not in manual_options
+        for tab in self.settings_tabs.get_slides():
+            if tab.title != 'General':
+                tab.tab_label.disabled_color = [0.0, 0.0, 0.0, 0.1]
+                tab.tab_label.disabled = flag
+                tab.disabled = flag
+        self.pct_widget.widget.disabled = flag
+
+    def validate_values(self, widget, text):
+
+        if widget == self.min_combo_length_widget.widget:
+            a = self.min_combo_length_widget.widget.text
+            b = self.max_combo_length_widget.widget.text
+            if int(a) > int(b):
+                self.max_combo_length_widget.widget.set_item(a)
+
+        if widget == self.max_combo_length_widget.widget:
+            a = self.min_combo_length_widget.widget.text
+            b = self.max_combo_length_widget.widget.text
+            if int(b) < int(a):
+                self.min_combo_length_widget.widget.set_item(b)
+
+        if widget == self.mode_widget.widget:
+            self._disable_tabs()
+
+        if widget == self.pct_widget.widget:
+            self.compile_weight_dict()
+
+    def change_value(self, _, text):
+        self.call_diagram.pointer_position_code = text
+        self.call_diagram.update_lines()
 
     def cancel_all_events(self, *_):
         for event in Clock.get_events():
             event.cancel()
-        self.time_label.text = self.total_time_widget.text
+        self.time_label.text = self.total_time_widget.widget.text
         self.call_label.text = 'READY'
         self.full_call_label.text = ''
-        self.call_diagram.pointer_position_code = '9'
+        self.call_diagram.pointer_position_code = None
         self.call_pointer.pointer_position_code = None
         self.call_diagram.update_lines()
         self.call_pointer.update_circle()
-
-
-def convert_value(v):
-    if ':' in v:
-        m, s = v.split(':')
-        return int(m) * 60 + int(s)
-    elif '.' in v:
-        return float(v)
-    elif '(' in v:
-        return int(v.split(' (')[0])
-    elif v.isnumeric():
-        return int(v)
-    else:
-        return True if (v == 'ON') else False
-
-
-def clock_time_from_seconds(seconds):
-    m, s = divmod(seconds, 60)
-    return f'{m:02d}:{s:02d}'
 
 
 if __name__ == '__main__':

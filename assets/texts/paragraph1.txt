@@ -1,0 +1,13 @@
+A swage is a blacksmith's tool that holds metal in place while it's worked. A swage creates the "fuller" - the indentation that runs along the blade, making the it lighter, broader, and more flexible while still maintaining its strength. Just as a fuller can improve a wide variety of blades, this app is designed to complement training in a wide variety of historical martial arts traditions.
+
+People’s interest in historical swordsmanship often comes from its connection to other interests, such as later sword forms such as sport fencing, aikido, or kendo; role-playing groups or LARP gaming; theater or choreographed fencing; reenactment; or military history or medieval history. Even a definite interest in learning swordsmanship as conveyed in a particular historical text or by a particular master is complicated by the many ways the texts can be interpreted.
+
+Accommodating all of these goals and priorities within a single app would be very difficult, if not impossible. Therefore, this app:
+
+   • Uses general terms instead of focusing on the vocabulary of a specific text or master.
+
+   • Prioritizes cuts and guards that are shared across historical traditions.
+
+   • Aims to strengthen movement, discipline, and muscle memory rather than teach specific sequences.
+
+   • Targets newcomers more than experienced practitioners (although experienced practitioners could find this app useful for solo practice).

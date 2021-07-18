@@ -1,0 +1,19 @@
+The app provides multiple ways to adjust the training program:
+
+   • [b]Mode:[/b] If set to "Pre-programmed", the app will cycle through a collection of pre-programmed drills (currently only includes cuts). If set to any one of the manual modes, the app will dynamically create combinations based on the "Weights", "Cut transitions" and "Guard transitions" tabs of the settings screen. The weights are all relative: a cut set at a weight of 4 will occur twice as often as a cut set at a weight of 2, and four times as often as a cut set at a weight of 1.
+
+   • [b]% cuts:[/b] Available only for "manual" mode", this decides the balance of cuts to guards in the combos. If set to 0%, the app will always call out guards. If set to 100%, the app will always call out cuts.
+
+   • [b]Drill duration:[/b] the amount of time you want to train for.
+
+   • [b]Seconds after call:[/b] the number of seconds to wait calling out the next cut or guard.
+
+   • [b]Seconds after combo:[/b] the number of seconds to wait after a combination of multiple cuts and/or guards have been called out.
+
+   • [b]Minimum combo:[/b] the fewest number of cuts and/or guards to include in a combo.
+
+   • [b]Maximum combo:[/b] the largest number of cuts and/or guards to include in a combo.
+
+   • [b]Repeat full combo at end:[/b] repeat the combo once before moving on to the next one. If progressive expansion is on, then the repetition will only apply to the full combo, not each progressive subset.
+
+   • [b]Progressively expand combos:[/b] if ON, the app will start by calling out the first two cuts and/or guards of the combo, then expand to three, then four, and so on, until the full combo is recited.
