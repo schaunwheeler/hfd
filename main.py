@@ -20,10 +20,13 @@ from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.tab import MDTabs
 from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
 from kivymd.uix.label import MDLabel
-from kivymd.uix.spinner import MDSpinner
+from kivymd.uix.card import MDSeparator
 
 from utils import clock_time_from_seconds
-from components import DropdownClass, Tab, WrappedLabel, ImageCard, CheckboxTable
+from components import (
+    Tab, WrappedLabel, ImageCard, CheckboxTable, DropdownTable,
+    LabeledDropdown, ScrollScreen
+)
 from graphics import CircleWidget, RectangleWidget
 
 
@@ -42,21 +45,27 @@ class HistoricalFencingDrillsApp(MDApp):
         self.combo_expand_widget = None
         self.min_combo_length_widget = None
         self.max_combo_length_widget = None
+        self.cut_transitions = None
+        self.guard_transitions = None
+        self.cut_box = None
+        self.guard_box = None
 
         # placeholders for layouts
         self.screen3 = None
-        self.screen_3_spinner = None
         self.screen_3_populated = False
 
         # Default settings
         self.current_settings_tab = 'General'
-        self.current_about_tab = 'HFD'
+        self.current_about_tab = 'Swage'
         self.cuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
         self.guards = ['H', 'rH', 'L', 'rL', 'M', 'rM', 'G', 'rG', 'T']
         self.cut_checkboxes = dict()
         self.guard_checkboxes = dict()
         self.settings = JsonStore('settings.json')
         self.transitions = JsonStore('transitions.json')
+        self.weights = JsonStore('weights.json')
+        self.weight_dict = dict()
+        self.compile_weight_dict()
 
     def build(self):
         # from kivy.utils import platform
@@ -69,6 +78,7 @@ class HistoricalFencingDrillsApp(MDApp):
 
         self.theme_cls.primary_palette = "Gray"
         parent = self.create_navigation()
+
         return parent
 
     def create_navigation(self):
@@ -90,23 +100,16 @@ class HistoricalFencingDrillsApp(MDApp):
             name='screen 3',
             text='About',
             icon='book',
-            on_tab_press=self.open_screen_3
+            on_tab_press=lambda x: self._switch_about_tabs(None, None, None, self.current_about_tab)
         )
 
         screen1 = self._create_screen_1()
         screen2 = self._create_screen_2()
-        self.screen3 = MDFloatLayout()
-
-        self.screen_3_spinner = MDSpinner(
-            size_hint=(0.25, 0.25),
-            pos_hint={'center_x': 0.5, 'center_y': 0.5},
-            active=False
-        )
-        self.screen3.add_widget(self.screen_3_spinner)
+        screen3 = self._create_screen_3()
 
         bottom_navigation_item1.add_widget(screen1)
         bottom_navigation_item2.add_widget(screen2)
-        bottom_navigation_item3.add_widget(self.screen3)
+        bottom_navigation_item3.add_widget(screen3)
 
         bottom_navigation.add_widget(bottom_navigation_item1)
         bottom_navigation.add_widget(bottom_navigation_item2)
@@ -117,32 +120,18 @@ class HistoricalFencingDrillsApp(MDApp):
         return parent
 
     def _create_pattern_generator(self):
-        m, s = self.total_time_widget.text.split(':')
+        m, s = self.total_time_widget.widget.text.split(':')
         total_time = int(m) * 60 + int(s)
-        min_size = int(self.min_combo_length_widget.text)
-        max_size = int(self.max_combo_length_widget.text)
-        cut_weight = float(self.pct_widget.text.strip('%')) / 100
-        guard_weight = 1.0 - cut_weight
+        min_size = int(self.min_combo_length_widget.widget.text)
+        max_size = int(self.max_combo_length_widget.widget.text)
 
-        weight_dict = dict()
-        for k in self.cuts:
-            weight_dict[k] = cut_weight
-        for k in self.guards:
-            weight_dict[k] = guard_weight
-
-        manual_options = ('Manual')
-        if self.mode_widget.text in manual_options:
+        manual_options = ('Manual', )
+        if self.mode_widget.widget.text in manual_options:
             transitions_dict = dict()
             for t, v in self.transitions.find():
                 if not v['value']:
                     continue
                 a, b = t.split('|')
-                if self.mode_widget.text == 'Manual (cuts only)':
-                    if (a in self.guards) or (b in self.guards):
-                        continue
-                if self.mode_widget.text == 'Manual (guards only)':
-                    if (a in self.cuts) or (b in self.cuts):
-                        continue
                 if a not in transitions_dict:
                     transitions_dict[a] = list()
                 transitions_dict[a].append(b)
@@ -152,7 +141,7 @@ class HistoricalFencingDrillsApp(MDApp):
             transitions_set = list(transitions_set)
 
             def draw_from_options(options):
-                weights = [weight_dict[o] for o in options]
+                weights = [self.weight_dict[o] for o in options]
                 if max(weights) == 0.0:
                     weights = [1.0] * len(weights)
 
@@ -170,7 +159,7 @@ class HistoricalFencingDrillsApp(MDApp):
 
                     yield combo
 
-        elif self.mode_widget.text == 'Pre-programmed':
+        elif self.mode_widget.widget.text == 'Pre-programmed':
             with open('assets/combos.txt', 'r') as f:
                 patterns = [
                     line.strip().split(' ')
@@ -192,8 +181,8 @@ class HistoricalFencingDrillsApp(MDApp):
 
         return generator_function
 
-    def schedule_calls(self, *args, leading_n=10):
-        m, s = self.total_time_widget.text.split(':')
+    def schedule_calls(self, *_, leading_n=10):
+        m, s = self.total_time_widget.widget.text.split(':')
         total_time = int(m) * 60 + int(s) + leading_n
         for row in self._create_ready(leading_n):
             Clock.schedule_once(
@@ -240,7 +229,7 @@ class HistoricalFencingDrillsApp(MDApp):
         final_row = (
             row[0] + 1,
             0,
-            self.total_time_widget.text,
+            self.total_time_widget.widget.text,
             'READY',
             '',
             None
@@ -256,20 +245,20 @@ class HistoricalFencingDrillsApp(MDApp):
     def _create_ready(self, leading_n=10):
         for i in range(leading_n + 1):
             if i < leading_n:
-                row = (i, None, self.total_time_widget.text, 'READY', str(leading_n - i), None)
+                row = (i, None, self.total_time_widget.widget.text, 'READY', str(leading_n - i), None)
             else:
-                row = (i, None, self.total_time_widget.text, 'BEGIN', '', None)
+                row = (i, None, self.total_time_widget.widget.text, 'BEGIN', '', None)
 
             yield row
 
     def _create_buffer(self, leading_n=10):
 
-        call_wait = float(self.call_wait_widget.text)
-        combo_wait = float(self.combo_wait_widget.text)
-        m, s = self.total_time_widget.text.split(':')
+        call_wait = float(self.call_wait_widget.widget.text)
+        combo_wait = float(self.combo_wait_widget.widget.text)
+        m, s = self.total_time_widget.widget.text.split(':')
         total_time = int(m) * 60 + int(s)
-        combo_expand = self.combo_expand_widget.text == 'ON'
-        combo_repeat = self.combo_repeat_widget.text == 'ON'
+        combo_expand = self.combo_expand_widget.widget.text == 'ON'
+        combo_repeat = self.combo_repeat_widget.widget.text == 'ON'
 
         pattern_generator = self._create_pattern_generator()
 
@@ -332,214 +321,161 @@ class HistoricalFencingDrillsApp(MDApp):
 
     def _create_screen_1(self):
 
-        container = MDGridLayout(
-            cols=1,
-            padding=dp(10),
-            spacing=dp(10)
+        container = MDGridLayout(cols=1, padding=dp(10), spacing=dp(10))
+        kwargs = dict(
+            store=self.settings,
+            value_key='value',
+            width_mult=2,
+            cols=1
         )
 
         mode_box = MDGridLayout(
-            cols=2, rows=2, orientation='tb-lr',
+            cols=2,
+            rows=1,
             spacing=[dp(5), dp(0)]
         )
-        title = MDLabel(
-            text='Mode:',
-            font_style='Button',
-            size_hint=(0.8, None),
-            pos_hint={'center_x': .4, 'center_y': 0.5}
-        )
-        self.mode_widget = DropdownClass(
-            menu_items=[
+
+        self.mode_widget = LabeledDropdown(
+            label='Mode:',
+            options=[
                 'Pre-programmed',
                 'Manual'
             ],
-            truncate_label=None,
-            position='center',
-            width_mult=100,
-            size_hint=(0.8, None),
-            pos_hint={'center_x': .4, 'center_y': 0.5}
+            size_hint=(0.8, 1.0),
+            pos_hint={'center_x': .4, 'center_y': 0.5},
+            **kwargs
         )
-        self.mode_widget.set_item(self.settings.get('Mode:')['text'])
-        self.mode_widget.ids['title'] = 'Mode:'
-        self.mode_widget.bind(text=self.store_new_value)
-        mode_box.add_widget(title)
+        self.mode_widget.widget.bind(text=self.validate_values)
         mode_box.add_widget(self.mode_widget)
 
-        title = MDLabel(
-            text='% cuts:',
-            font_style='Button',
-            size_hint=(0.2, None),
-            pos_hint={'center_x': .9, 'center_y': 0.5}
+        self.pct_widget = LabeledDropdown(
+            label='% cuts:',
+            options=[f"{v / 100:.0%}" for v in range(0, 105, 5)],
+            size_hint=(0.2, 1.0),
+            pos_hint={'center_x': .9, 'center_y': 0.5},
+            **kwargs
         )
-        self.pct_widget = DropdownClass(
-            menu_items=[f"{v / 100:.0%}" for v in range(0, 105, 5)],
-            truncate_label=None,
-            position='center',
-            width_mult=2,
-            size_hint=(0.2, None),
-            pos_hint={'center_x': .9, 'center_y': 0.5}
-        )
-        self.pct_widget.set_item(self.settings.get('% cuts:')['text'])
-        self.pct_widget.ids['title'] = '% cuts:'
-        self.pct_widget.bind(text=self.store_new_value)
-
-        mode_box.add_widget(title)
+        self.pct_widget.widget.bind(text=self.validate_values)
         mode_box.add_widget(self.pct_widget)
+
         container.add_widget(mode_box)
 
-        box = MDGridLayout(cols=1)
-        title = MDLabel(text='Drill duration:', font_style='Button')
-        self.total_time_widget = DropdownClass(
-            menu_items=[
+        self.total_time_widget = LabeledDropdown(
+            label='Drill duration:',
+            options=[
                 str(h).zfill(2) + flag
                 for h in range(1, 20)
                 for flag in (':00', ':30')
             ][:-1],
-            truncate_label=None,
-            position='center',
-            width_mult=100,
-            size_hint=(0.35, None),
-            pos_hint={'center_x': .5, 'center_y': 0.5}
+            **kwargs
         )
-        self.total_time_widget.set_item(self.settings.get('Drill duration:')['text'])
-        self.total_time_widget.ids['title'] = 'Drill duration:'
-        self.total_time_widget.bind(text=self.store_new_value)
-        box.add_widget(title)
-        box.add_widget(self.total_time_widget)
-        container.add_widget(box)
+        container.add_widget(self.total_time_widget)
 
-        pause_box = MDGridLayout(cols=2, rows=2, orientation='tb-lr', spacing=dp(5))
-        title = MDLabel(text='Seconds after call:', font_style='Button')
-        self.call_wait_widget = DropdownClass(
-            menu_items=[str(x / 100) for x in range(5, 205, 5)],
-            truncate_label=None,
-            position='center',
-            width_mult=2,
-            size_hint=(0.35, None),
-            pos_hint={'center_x': .5, 'center_y': 0.5}
+        pause_box = MDGridLayout(cols=2, rows=1, spacing=[dp(5), dp(0)])
+        self.call_wait_widget = LabeledDropdown(
+            label='Seconds after call:',
+            options=[str(x / 100) for x in range(5, 205, 5)],
+            **kwargs
         )
-        self.call_wait_widget.set_item(self.settings.get('Seconds after call:')['text'])
-        self.call_wait_widget.ids['title'] = 'Seconds after call:'
-        self.call_wait_widget.bind(text=self.store_new_value)
-        pause_box.add_widget(title)
         pause_box.add_widget(self.call_wait_widget)
 
-        title = MDLabel(text='Seconds after combo:', font_style='Button')
-        self.combo_wait_widget = DropdownClass(
-            menu_items=[str(x / 100) for x in range(5, 205, 5)],
-            truncate_label=None,
-            position='center',
-            width_mult=2,
-            size_hint=(0.35, None),
-            pos_hint={'center_x': .5, 'center_y': 0.5}
+        self.combo_wait_widget = LabeledDropdown(
+            label='Seconds after combo:',
+            options=[str(x / 100) for x in range(5, 205, 5)],
+            **kwargs
         )
-        self.combo_wait_widget.set_item(self.settings.get('Seconds after combo:')['text'])
-        self.combo_wait_widget.ids['title'] = 'Seconds after combo:'
-        self.combo_wait_widget.bind(text=self.store_new_value)
-        pause_box.add_widget(title)
         pause_box.add_widget(self.combo_wait_widget)
 
         container.add_widget(pause_box)
 
-        length_box = MDGridLayout(cols=2, rows=2, orientation='tb-lr', spacing=dp(5))
+        length_box = MDGridLayout(cols=2, rows=1, spacing=[dp(5), dp(0)])
 
-        title = MDLabel(text='Minimum combo:', font_style='Button')
-        self.min_combo_length_widget = DropdownClass(
-            menu_items=[str(v) for v in range(2, 11)],
-            truncate_label=None,
-            position='center',
-            width_mult=2,
-            size_hint=(0.35, None),
-            pos_hint={'center_x': .5, 'center_y': 0.5}
+        self.min_combo_length_widget = LabeledDropdown(
+            label='Minimum combo:',
+            options=[str(v) for v in range(2, 11)],
+            **kwargs
         )
-        self.min_combo_length_widget.set_item(self.settings.get('Minimum combo:')['text'])
-        self.min_combo_length_widget.ids['title'] = 'Minimum combo:'
-        self.min_combo_length_widget.bind(text=self.store_new_value)
-        length_box.add_widget(title)
+        self.min_combo_length_widget.widget.bind(text=self.validate_values)
         length_box.add_widget(self.min_combo_length_widget)
 
-        title = MDLabel(text='Maximum combo:', font_style='Button')
-        self.max_combo_length_widget = DropdownClass(
-            menu_items=[str(v) for v in range(2, 11)],
-            truncate_label=None,
-            position='center',
-            width_mult=2,
-            size_hint=(0.35, None),
-            pos_hint={'center_x': .5, 'center_y': 0.5}
+        self.max_combo_length_widget = LabeledDropdown(
+            label='Maximum combo:',
+            options=[str(v) for v in range(2, 11)],
+            **kwargs
         )
-        self.max_combo_length_widget.set_item(self.settings.get('Maximum combo:')['text'])
-        self.max_combo_length_widget.ids['title'] = 'Maximum combo:'
-        self.max_combo_length_widget.bind(text=self.store_new_value)
-        length_box.add_widget(title)
+        self.max_combo_length_widget.widget.bind(text=self.validate_values)
         length_box.add_widget(self.max_combo_length_widget)
 
         container.add_widget(length_box)
 
-        box = MDGridLayout(cols=1)
-        title = MDLabel(text='Repeat full combo at end:', font_style='Button')
-        self.combo_repeat_widget = DropdownClass(
-            menu_items=['OFF', 'ON'],
-            truncate_label=None,
-            position='center',
-            width_mult=100,
-            size_hint=(0.35, None),
-            pos_hint={'center_x': .5, 'center_y': 0.5}
+        kwargs['width_mult'] = 100
+        self.combo_repeat_widget = LabeledDropdown(
+            label='Repeat full combo at end:',
+            options=['OFF', 'ON'],
+            **kwargs
         )
-        self.combo_repeat_widget.set_item(self.settings.get('Repeat full combo at end:')['text'])
-        self.combo_repeat_widget.ids['title'] = 'Repeat full combo at end:'
-        self.combo_repeat_widget.bind(text=self.store_new_value)
-        box.add_widget(title)
-        box.add_widget(self.combo_repeat_widget)
-        container.add_widget(box)
+        container.add_widget(self.combo_repeat_widget)
 
-        box = MDGridLayout(cols=1)
-        title = MDLabel(
-            text='Progressively expand combos:', font_style='Button'
+        self.combo_expand_widget = LabeledDropdown(
+            label='Progressively expand combos:',
+            options=['OFF', 'ON'],
+            **kwargs
         )
-        self.combo_expand_widget = DropdownClass(
-            menu_items=['OFF', 'ON'],
-            truncate_label=None,
-            position='center',
-            width_mult=100,
-            size_hint=(0.35, None),
-            pos_hint={'center_x': .5, 'center_y': 0.5}
-        )
-        self.combo_expand_widget.set_item(self.settings.get('Progressively expand combos:')['text'])
-        self.combo_expand_widget.ids['title'] = 'Progressively expand combos:'
-        self.combo_expand_widget.bind(text=self.store_new_value)
-        box.add_widget(title)
-        box.add_widget(self.combo_expand_widget)
-        container.add_widget(box)
+        container.add_widget(self.combo_expand_widget)
 
-        self.settings_tabs = MDTabs()
+        self.settings_tabs = MDTabs(anim_duration=0.5)
         self.settings_tabs.bind(on_tab_switch=self._switch_settings_tabs)
 
         for tab_label in (
                 'General',
+                'Weights',
                 'Cut Transitions',
                 'Guard Transitions'
         ):
             tab = Tab(title=tab_label)
             if tab_label == 'General':
                 tab.add_widget(container)
+            elif tab_label == 'Weights':
+
+                container = MDBoxLayout(orientation='vertical')
+                self.cut_box = DropdownTable(
+                    items=self.cuts,
+                    options=[str(x) for x in range(11)],
+                    store=self.weights,
+                    shape=(3, 3),
+                    value_key='value',
+                    create_table=False
+                )
+                self.cut_box.bind(calls=self.compile_weight_dict)
+                self.guard_box = DropdownTable(
+                    items=self.guards,
+                    options=[str(x) for x in range(11)],
+                    store=self.weights,
+                    shape=(3, 3),
+                    value_key='value',
+                    create_table=False
+                )
+                self.guard_box.bind(calls=self.compile_weight_dict)
+                container.add_widget(self.cut_box)
+                container.add_widget(MDSeparator())
+                container.add_widget(self.guard_box)
+                tab.add_widget(container)
             elif tab_label == 'Cut Transitions':
-                container = CheckboxTable(
+                self.cut_transitions = CheckboxTable(
                     row_items=self.cuts + self.guards,
                     col_items=self.cuts,
                     store=self.transitions,
                     create_table=False
                 )
-                tab.add_widget(container)
-                tab.ids['checkboxes'] = container
+                tab.add_widget(self.cut_transitions)
             elif tab_label == 'Guard Transitions':
-                container = CheckboxTable(
+                self.guard_transitions = CheckboxTable(
                     row_items=self.cuts + self.guards,
                     col_items=self.guards,
                     store=self.transitions,
                     create_table=False
                 )
-                tab.add_widget(container)
-                tab.ids['checkboxes'] = container
+                tab.add_widget(self.guard_transitions)
 
             self.settings_tabs.add_widget(tab)
         self._disable_tabs()
@@ -556,7 +492,7 @@ class HistoricalFencingDrillsApp(MDApp):
             )
 
         self.time_label = MDLabel(
-            text=self.total_time_widget.text,
+            text=self.total_time_widget.widget.text,
             halign='center',
             font_style='H2',
             pos_hint={'center_x': .5, 'center_y': .9},
@@ -601,59 +537,40 @@ class HistoricalFencingDrillsApp(MDApp):
         return container
 
     def _create_screen_3(self, *_):
-
+        container = MDFloatLayout()
         self.about_tabs = MDTabs()
         self.about_tabs.bind(on_tab_switch=self._switch_about_tabs)
-        self.screen3.add_widget(self.about_tabs)
+        container.add_widget(self.about_tabs)
 
         for tab_label in (
-                'HFD',
+                'Swage',
                 'Cuts and Guards',
                 'Settings'
         ):
             tab = Tab(title=tab_label)
-            if tab_label == 'HFD':
-                header = WrappedLabel(
-                    text='Historical Fencing Drills',
-                    halign='left',
-                    font_style='H3',
-                    size_hint_y=None,
-                    size_hint_x=1,
-                    text_size=(None, None),
-                    width_padding=20
+            if tab_label == 'Swage':
+                self.scroll_container1 = ScrollScreen(
+                    item_list=[
+                        {
+                            '_pattern': 'text',
+                            'text': 'Swage',
+                            'markup': True,
+                            'font_style': 'H3',
+                            'halign': 'left'
+                        },
+                        {
+                            '_pattern': 'textfile',
+                            'text': 'assets/texts/paragraph1.txt',
+                            'font_style': 'Body1',
+                            'halign': 'left',
+                            'markup': True
+                        }
+                    ],
+                    do_scroll_x=False
                 )
+                tab.add_widget(self.scroll_container1)
 
-                with open('assets/texts/paragraph1.txt', 'r') as f:
-                    paragraph1 = WrappedLabel(
-                        text=f.read(),
-                        halign='left',
-                        font_style='Body1',
-                        size_hint_y=None,
-                        size_hint_x=1,
-                        text_size=(None, None),
-                        width_padding=20
-                    )
-
-                scroll_container = ScrollView(do_scroll_x=False)
-                container = GridLayout(cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None)
-                container.bind(minimum_height=container.setter('height'))
-                scroll_container.add_widget(container)
-                container.add_widget(header)
-                container.add_widget(paragraph1)
-                tab.add_widget(scroll_container)
             elif tab_label == 'Cuts and Guards':
-
-                with open('assets/texts/paragraph2a.txt', 'r') as f:
-                    paragraph2a = WrappedLabel(
-                        text=f.read(),
-                        halign='left',
-                        font_style='Body1',
-                        size_hint_y=None,
-                        size_hint_x=1,
-                        text_size=(None, None),
-                        width_padding=20
-                    )
-
                 image_files = {
                     'fiore_getty.png': "[i]The Segno della Spada[/i] of Fiore dei Libieri, 1409.",
                     'vadi_gladiatoria.jpg': "Filippo Vadi’s [i]De Arte Gladiatoria[/i], c.1482",
@@ -670,73 +587,53 @@ class HistoricalFencingDrillsApp(MDApp):
                     'self_defense.png': "A diagram commonly used in modern self-defense courses.",
                 }
 
-                self.image1 = ImageCard(
-                    image_list=image_files,
-                    image_path='assets/images/',
-                    orientation="vertical",
-                    padding="8dp",
-                    size_hint=(None, None),
-                    size=("280dp", "180dp"),
-                    pos_hint={"center_x": .5, "center_y": .5}
+                self.scroll_container2 = ScrollScreen(
+                    item_list=[
+                        {
+                            '_pattern': 'textfile',
+                            'text': 'assets/texts/paragraph2a.txt',
+                            'font_style': 'Body1',
+                            'halign': 'left',
+                            'markup': True
+                        },
+                        {
+                            '_pattern': 'imagecard',
+                            'image_list': image_files,
+                            'image_path': 'assets/images/'
+                        },
+                        {
+                            '_pattern': 'textfile',
+                            'text': 'assets/texts/paragraph2b.txt',
+                            'font_style': 'Body1',
+                            'halign': 'left',
+                            'markup': True
+                        },
+                        {
+                            '_pattern': 'image',
+                            'source': 'assets/images/cut_and_thrust_abbreviations.png'
+                        },
+                    ],
+                    do_scroll_x=False
                 )
-
-                with open('assets/texts/paragraph2b.txt', 'r') as f:
-                    paragraph2b = WrappedLabel(
-                        text=f.read(),
-                        halign='left',
-                        font_style='Body1',
-                        size_hint_y=None,
-                        size_hint_x=1,
-                        text_size=(None, None),
-                        width_padding=20
-                    )
-
-                self.image2 = Image(
-                    source='assets/images/cut_and_thrust_abbreviations.png',
-                    allow_stretch=True,
-                    keep_ratio=True,
-                    size_hint_y=None,
-                    size_hint_x=None
-                )
-                scroll_container = ScrollView(do_scroll_x=False)
-                container = GridLayout(cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None)
-                container.bind(minimum_height=container.setter('height'))
-                scroll_container.add_widget(container)
-                container.add_widget(paragraph2a)
-                container.add_widget(self.image1)
-                container.add_widget(paragraph2b)
-                container.add_widget(self.image2)
-                tab.add_widget(scroll_container)
-
-                adjusted_width = Window.width - 20
-                self.image1.width = adjusted_width
-                self.image1.height = adjusted_width
-                self.image2.width = adjusted_width
-                self.image2.height = adjusted_width / self.image2.image_ratio
+                tab.add_widget(self.scroll_container2)
 
             elif tab_label == 'Settings':
-                with open('assets/texts/paragraph3.txt', 'r') as f:
-                    paragraph3 = WrappedLabel(
-                        text=f.read(),
-                        markup=True,
-                        halign='left',
-                        font_style='Body1',
-                        size_hint_y=None,
-                        size_hint_x=1,
-                        text_size=(None, None),
-                        width_padding=20
-                    )
-                scroll_container = ScrollView(do_scroll_x=False)
-                container = GridLayout(cols=1, padding=10, spacing=10, size_hint_x=1, size_hint_y=None)
-                container.bind(minimum_height=container.setter('height'))
-                scroll_container.add_widget(container)
-                container.add_widget(paragraph3)
-                tab.add_widget(scroll_container)
+                self.scroll_container3 = ScrollScreen(
+                    item_list=[
+                        {
+                            '_pattern': 'textfile',
+                            'text': 'assets/texts/paragraph3.txt',
+                            'font_style': 'Body1',
+                            'halign': 'left',
+                            'markup': True
+                        }
+                    ],
+                    do_scroll_x=False
+                )
+                tab.add_widget(self.scroll_container3)
 
             self.about_tabs.add_widget(tab)
-
-        self.screen_3_populated = True
-        Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', False), 2.0)
+        return container
 
     def _update_screen2(self, row, _):
         call_time, call_length, time_text, call_text, full_call_text, play_sound = row
@@ -757,50 +654,76 @@ class HistoricalFencingDrillsApp(MDApp):
 
             play_sound.play()
 
-    def open_screen_3(self, *_):
-        self.cancel_all_events()
-        if not self.screen_3_populated:
-            Clock.schedule_once(lambda dt: setattr(self.screen_3_spinner, 'active', True), 0.0)
-            Clock.schedule_once(lambda x: self._create_screen_3(), 2)
-
     def _switch_settings_tabs(self, tabs, tab, label, tab_text):
 
         self.current_settings_tab = tab_text
 
-        if 'checkboxes' in tab.ids:
-            if not tab.ids['checkboxes'].table_populated:
-                tab.ids['checkboxes'].set_spinner(True)
-                Clock.schedule_once(lambda dt: tab.ids['checkboxes'].create_table(), 1)
+        if tab_text == 'Cut Transitions':
+            if not self.cut_transitions.table_populated:
+                Clock.schedule_once(lambda dt: self.cut_transitions.append_table(), 0.5)
+        if tab_text == 'Guard Transitions':
+            if not self.guard_transitions.table_populated:
+                Clock.schedule_once(lambda dt: self.guard_transitions.append_table(), 0.5)
+        if tab_text == 'Weights':
+            if not self.cut_box.table_populated:
+                Clock.schedule_once(lambda dt: self.cut_box.append_table(), 0.5)
+            if not self.guard_box.table_populated:
+                Clock.schedule_once(lambda dt: self.guard_box.append_table(), 0.5)
 
     def _switch_about_tabs(self, tabs, tab, label, tab_text):
 
+        self.cancel_all_events()
         self.current_about_tab = tab_text
+        if tab_text == 'Swage':
+            if not self.scroll_container1.screen_populated:
+                Clock.schedule_once(lambda df: self.scroll_container1.fill_container(), 0.5)
+        if tab_text == 'Cuts and Guards':
+            if not self.scroll_container2.screen_populated:
+                Clock.schedule_once(lambda df: self.scroll_container2.fill_container(), 0.5)
+        if tab_text == 'Settings':
+            if not self.scroll_container3.screen_populated:
+                Clock.schedule_once(lambda df: self.scroll_container3.fill_container(), 0.5)
+
+    def compile_weight_dict(self, *_):
+
+        self.weight_dict = dict()
+        cut_pct = float(self.settings.get("% cuts:")['value'].strip('%')) / 100
+        for k, d in self.weights.find():
+            v = int(d['value'])
+            if k in self.cuts:
+                self.weight_dict[k] = v * cut_pct
+            elif k in self.guards:
+                self.weight_dict[k] = v * (1.0 - cut_pct)
 
     def _disable_tabs(self):
-        manual_options = ('Manual')
-        flag = self.mode_widget.text not in manual_options
+        manual_options = ('Manual', )
+        flag = self.mode_widget.widget.text not in manual_options
         for tab in self.settings_tabs.get_slides():
             if tab.title != 'General':
                 tab.tab_label.disabled_color = [0.0, 0.0, 0.0, 0.1]
                 tab.tab_label.disabled = flag
                 tab.disabled = flag
-        self.pct_widget.disabled = flag
+        self.pct_widget.widget.disabled = flag
 
-    def store_new_value(self, widget, text):
-        key = widget.ids['title']
-        if key.upper() == 'Minimum combo:':
-            a = self.min_combo_length_widget.text
-            b = self.max_combo_length_widget.text
+    def validate_values(self, widget, text):
+
+        if widget == self.min_combo_length_widget.widget:
+            a = self.min_combo_length_widget.widget.text
+            b = self.max_combo_length_widget.widget.text
             if int(a) > int(b):
-                self.max_combo_length_widget.set_item(a)
-        if key.upper() == 'Maximum combo:':
-            a = self.min_combo_length_widget.text
-            b = self.max_combo_length_widget.text
+                self.max_combo_length_widget.widget.set_item(a)
+
+        if widget == self.max_combo_length_widget.widget:
+            a = self.min_combo_length_widget.widget.text
+            b = self.max_combo_length_widget.widget.text
             if int(b) < int(a):
-                self.min_combo_length_widget.set_item(b)
-        if key == 'Mode:':
+                self.min_combo_length_widget.widget.set_item(b)
+
+        if widget == self.mode_widget.widget:
             self._disable_tabs()
-        self.settings.put(key, text=text)
+
+        if widget == self.pct_widget.widget:
+            self.compile_weight_dict()
 
     def change_value(self, _, text):
         self.call_diagram.pointer_position_code = text
@@ -809,7 +732,7 @@ class HistoricalFencingDrillsApp(MDApp):
     def cancel_all_events(self, *_):
         for event in Clock.get_events():
             event.cancel()
-        self.time_label.text = self.total_time_widget.text
+        self.time_label.text = self.total_time_widget.widget.text
         self.call_label.text = 'READY'
         self.full_call_label.text = ''
         self.call_diagram.pointer_position_code = None
