@@ -1,9 +1,11 @@
 import os
 from functools import partial
 
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, BooleanProperty, NumericProperty
 from kivy.metrics import dp
 from kivy.clock import Clock
+from kivy.core.window import Window
+from kivy.uix.scrollview import ScrollView
 
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -16,10 +18,240 @@ from kivymd.uix.card import MDCard
 from kivy.uix.image import Image
 from kivymd.uix.button import MDIconButton, MDRaisedButton
 from kivymd.uix.selectioncontrol import MDCheckbox
-from kivymd.uix.spinner import MDSpinner
+from kivymd.uix.progressbar import MDProgressBar
+
+
+class ScrollScreen(ScrollView):
+
+    screen_populated = BooleanProperty(False)
+
+    def __init__(
+            self,
+            item_list,
+            **kwargs
+    ):
+        super().__init__(**kwargs)
+
+        self.screen_populated = False
+        self.item_list = item_list
+        self.n_items = len(item_list)
+        self.container = MDGridLayout(
+            cols=1,
+            padding=10,
+            spacing=10,
+            size_hint_x=1,
+            size_hint_y=None
+        )
+        self.container.bind(minimum_height=self.container.setter('height'))
+        self.add_widget(self.container)
+
+        self.progress_bar = MDProgressBar(
+            value=5,
+            pos_hint={'center_x': 0.5, 'center_y': 1.0},
+            color=(0, 0, 0, 1)
+        )
+
+        self.container.add_widget(self.progress_bar)
+
+    def fill_container(self):
+        i = 1
+        denom = self.n_items * 2
+        for defs in self.item_list:
+            dt = i / denom
+            pct = int((1 / self.n_items) * 100)
+            if defs['_pattern'] in ('text', 'textfile'):
+                Clock.schedule_once(partial(self.add_text, defs, pct), dt)
+            if defs['_pattern'] in ('image', 'imagecard'):
+                Clock.schedule_once(partial(self.add_image, defs, pct), dt)
+            i += 1
+        self.screen_populated = True
+        self.container.remove_widget(self.progress_bar)
+
+    def add_text(self, definitions, pct, dt):
+
+        pattern = definitions.pop('_pattern')
+        text = definitions.pop('text')
+        if pattern == 'textfile':
+            with open(text, 'r') as f:
+                text = f.read()
+
+        widget = WrappedLabel(
+            text=text,
+            size_hint_y=None,
+            size_hint_x=1,
+            text_size=(None, None),
+            width_padding=20,
+            **definitions
+        )
+        self.container.add_widget(widget)
+        self.set_progress_bar(pct)
+
+    def add_image(self, definitions, pct, dt):
+        pattern = definitions.pop('_pattern')
+
+        if pattern == 'image':
+            widget = Image(
+                allow_stretch=True,
+                keep_ratio=True,
+                size_hint_y=None,
+                size_hint_x=None,
+                **definitions
+            )
+            self.container.add_widget(widget)
+
+            widget.width = Window.width
+            widget.height = Window.width / widget.image_ratio
+        elif pattern == 'imagecard':
+            widget = ImageCard(
+                orientation="vertical",
+                padding="8dp",
+                size_hint=(None, None),
+                size=("280dp", "180dp"),
+                pos_hint={"center_x": .5, "center_y": .5},
+                **definitions
+            )
+            self.container.add_widget(widget)
+
+            widget.width = Window.width
+            widget.height = Window.width
+
+        self.set_progress_bar(pct)
+
+    def set_progress_bar(self, set_at):
+        self.progress_bar.value = set_at
+
+class LabeledDropdown(MDGridLayout):
+
+    def __init__(
+            self,
+            label,
+            options,
+            store,
+            value_key='value',
+            width_mult=100,
+            **kwargs
+    ):
+        super().__init__(**kwargs)
+
+        self.label = label
+        self.store = store
+        self.value_key = value_key
+
+        title = MDLabel(text=label, font_style='Button')
+        self.widget = DropdownClass(
+            menu_items=options,
+            truncate_label=None,
+            position='center',
+            width_mult=width_mult,
+            size_hint=(0.35, None),
+            pos_hint={'center_x': .5, 'center_y': 0.5}
+        )
+        self.widget.set_item(self.store.get(label)[self.value_key])
+        self.widget.bind(text=self.store_new_value)
+        self.add_widget(title)
+        self.add_widget(self.widget)
+
+    def store_new_value(self, _, text):
+
+        self.store.put(self.label, **{self.value_key: text})
+
+
+class DropdownTable(MDFloatLayout):
+
+    table_populated = BooleanProperty(False)
+    calls = NumericProperty(0)
+
+    def __init__(
+            self,
+            items,
+            options,
+            store,
+            shape,
+            value_key='value',
+            create_table=True,
+            **kwargs
+    ):
+        super().__init__(**kwargs)
+
+        self.options = options
+        self.items = items
+        self.store = store
+        self.value_key = value_key
+        self.calls = 0
+        self.n_rows, self.n_cols = shape
+        self.n_cells = len(self.items)
+        self.table_populated = False
+        self.bind(table_populated=lambda *x: Clock.schedule_once(lambda dt: self.create_table_layout(), 0.5))
+
+        self.table = MDGridLayout(
+            rows=self.n_rows,
+            cols=self.n_cols,
+            padding=dp(10),
+            size_hint=(0.95, 0.9),
+            pos_hint={'center_x': 0.5, 'center_y': 0.55}
+        )
+
+        self.progress_bar = MDProgressBar(
+            value=5,
+            pos_hint={'center_x': 0.5, 'center_y': 0.999},
+            color=(0, 0, 0, 1)
+        )
+
+        self.add_widget(self.progress_bar)
+
+        if create_table:
+            self.append_table()
+
+    def append_table(self):
+        self.set_progress_bar(5)
+        self.table_populated = True
+
+    def create_table_layout(self, *_):
+        denom = self.n_cells
+        for i, label in enumerate(self.items):
+            j = (i + 1) / denom
+            pct = int(((i + 1) / self.n_cells) * 100)
+
+            Clock.schedule_once(partial(self.create_cell, label, pct), j)
+
+        Clock.schedule_once(lambda dt: self.add_widget(self.table), (i + 3) / denom)
+        Clock.schedule_once(lambda dt: self.remove_widget(self.progress_bar), (i + 4) / denom)
+
+    def create_cell(self, label, pct, dt):
+
+        box = MDBoxLayout(orientation='vertical', spacing=dp(0))
+        lab = MDLabel(
+            text=label, font_style='H6',
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            size_hint=(1.0, 1.0),
+            halign='center',
+            valign='center'
+        )
+        ddc = DropdownClass(
+            menu_items=self.options,
+            pos_hint={'center_x': 0.5, 'center_y': 0.5}
+        )
+        value = self.store.get(label)[self.value_key]
+        ddc.set_item(value)
+        ddc.ids['key'] = label
+        ddc.bind(text=self._set_weight)
+
+        box.add_widget(lab)
+        box.add_widget(ddc)
+        self.table.add_widget(box)
+        self.set_progress_bar(pct)
+
+    def set_progress_bar(self, set_at):
+        self.progress_bar.value = set_at
+
+    def _set_weight(self, widget, text):
+        self.store.put(widget.ids['key'], **{self.value_key: text})
+        self.calls += 1
 
 
 class CheckboxTable(MDFloatLayout):
+
+    table_populated = BooleanProperty(False)
 
     def __init__(
             self,
@@ -44,6 +276,7 @@ class CheckboxTable(MDFloatLayout):
         self.col_items = col_items
         self.store = store
         self.table_populated = False
+        self.bind(table_populated=lambda *x: Clock.schedule_once(lambda dt: self.create_table_layout(), 0.5))
         self.checkbox_dict = dict()
 
         button = MDRaisedButton(
@@ -53,23 +286,26 @@ class CheckboxTable(MDFloatLayout):
             on_press=self._reset_transition_defaults
         )
 
-        self.spinner = MDSpinner(
-            size_hint=(0.25, 0.25),
-            pos_hint={'center_x': 0.5, 'center_y': 0.55},
-            active=False
+        self.progress_bar = MDProgressBar(
+            value=5,
+            pos_hint={'center_x': 0.5, 'center_y': 0.999},
+            color=(0, 0, 0, 1)
         )
 
-        self.add_widget(self.table)
         self.add_widget(button)
-        self.add_widget(self.spinner)
+        self.add_widget(self.progress_bar)
 
         if create_table:
-            self.create_table()
+            self.append_table()
 
-    def set_spinner(self, set_at):
-        self.spinner.active = set_at
+    def set_progress_bar(self, set_at):
+        self.progress_bar.value = set_at
 
-    def create_table_layout(self, timing=100):
+    def append_table(self):
+        self.set_progress_bar(5)
+        self.table_populated = True
+
+    def create_table_layout(self, *_):
         for col in (['', ] + self.col_items):
             lab = MDLabel(
                 text=col,
@@ -79,21 +315,19 @@ class CheckboxTable(MDFloatLayout):
                 pos_hint={'center_x': 0.5, 'center_y': 0.5},
             )
             self.table.add_widget(lab)
-
+        denom = self.n_rows / 3
         for i, row in enumerate(self.row_items):
-            j = (i + 1) / timing
+            j = (i + 1) / denom
+            pct = int(((i + 1) / self.n_rows) * 100)
             cells = [row, ] + self.col_items
             cells = cells[:]
 
-            Clock.schedule_once(partial(self.create_row, cells), j)
+            Clock.schedule_once(partial(self.create_row, cells, pct), j)
 
-        self.table_populated = True
-        if self.spinner.active:
-            self.set_spinner(False)
-            self.set_spinner(True)
-            Clock.schedule_once(lambda dt: self.set_spinner(False), j + 2.0)
+        Clock.schedule_once(lambda dt: self.add_widget(self.table), (i + 3) / denom)
+        Clock.schedule_once(lambda dt: self.remove_widget(self.progress_bar), (i + 4) / denom)
 
-    def create_row(self, cells, dt):
+    def create_row(self, cells, pct, dt):
         row = cells.pop(0)
         lab = MDLabel(
             text=row,
@@ -115,6 +349,8 @@ class CheckboxTable(MDFloatLayout):
             lab.bind(active=self._set_transition)
             self.checkbox_dict[transition_string] = lab
             self.table.add_widget(lab)
+
+        self.set_progress_bar(pct)
 
     def _reset_transition_defaults(self, *_):
         for k, d in self.store.find():
