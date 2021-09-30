@@ -16,77 +16,188 @@ from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDCard
 from kivy.uix.image import Image
-from kivymd.uix.button import MDIconButton, MDRaisedButton
+from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.progressbar import MDProgressBar
 
-from kivymd.uix.button import MDFlatButton
+from kivymd.uix.button import MDFlatButton, MDIconButton, MDRoundFlatIconButton
 from kivymd.uix.dialog import MDDialog
-from kivymd.uix.list import OneLineAvatarIconListItem, CheckboxLeftWidget, MDList
+from kivymd.uix.selectioncontrol import MDSwitch
 
 
-class CheckBoxDialog(MDFlatButton):
+class DialogTable(MDFloatLayout):
 
-    """
-    widget = CheckBoxDialog(
-        text='OPEN THIS',
-        dialog_title='rG',
-        item_names=['1', '2', '3'],
-        source=None
-    )
-    """
+    table_populated = BooleanProperty(False)
+    calls = NumericProperty(0)
 
     def __init__(
-        self,
-        dialog_title,
-        item_names,
-        source,
-        **kwargs
+            self,
+            items,
+            options,
+            store,
+            shape,
+            value_key='value',
+            create_table=True,
+            **kwargs
     ):
         super().__init__(**kwargs)
 
-        self.source = source
-        self. item_list = MDList()
-        for name in item_names:
-            item = self.create_item(name)
+        self.items = items
+        self.options = options
+        self.store = store
+        self.value_key = value_key
+        self.calls = 0
+        self.n_rows, self.n_cols = shape
+        self.n_cells = len(self.items)
+        self.dialog = None
+        self.item_list = None
+        self.table_populated = False
+        self.bind(table_populated=lambda *x: Clock.schedule_once(lambda dt: self.create_table_layout(), 0.5))
+
+        self.table = MDGridLayout(
+            rows=self.n_rows,
+            cols=self.n_cols,
+            padding=dp(10),
+            size_hint=(0.95, 0.9),
+            pos_hint={'center_x': 0.5, 'center_y': 0.55}
+        )
+
+        self.progress_bar = MDProgressBar(
+            value=5,
+            pos_hint={'center_x': 0.5, 'center_y': 0.999},
+            color=(0, 0, 0, 1)
+        )
+        self.add_widget(self.progress_bar)
+
+        if create_table:
+            self.append_table()
+
+    def append_table(self):
+        self.set_progress_bar(5)
+        self.table_populated = True
+
+    def create_table_layout(self, *_):
+        denom = self.n_cells
+        for i, label in enumerate(self.items):
+            j = (i + 1) / denom
+            pct = int(((i + 1) / self.n_cells) * 100)
+
+            Clock.schedule_once(partial(self.create_cell, label, pct), j)
+
+        Clock.schedule_once(lambda dt: self.add_widget(self.table), (i + 3) / denom)
+        Clock.schedule_once(lambda dt: self.remove_widget(self.progress_bar), (i + 4) / denom)
+
+    def create_cell(self, label, pct, dt):
+
+        box = MDBoxLayout(
+            orientation='vertical',
+            spacing=dp(0)
+        )
+        button = MDRoundFlatIconButton(
+            text=label,
+            icon='circle-edit-outline',
+            icon_color='#4b77be',
+            pos_hint={'center_x': 0.5, 'center_y': 0.5}
+        )
+        button.ids['key'] = label
+        button.on_press = lambda *x: self.populate_dialog(button)
+        box.add_widget(button)
+        self.table.add_widget(box)
+        self.set_progress_bar(pct)
+
+    def set_progress_bar(self, set_at):
+        self.progress_bar.value = set_at
+
+    def _set_value(self, key, text):
+        d = self.store.get(key)
+        d[self.value_key] = text
+        self.store.put(key, **d)
+        self.calls += 1
+
+    def populate_dialog(self, widget):
+
+        self.item_list = MDGridLayout(
+            cols=3,
+            rows=6,
+            spacing=(dp(50), dp(0)),
+            # row_default_height=Window.height / 12,
+            height=Window.height * 0.66
+        )
+
+        a = widget.ids['key']
+
+        for b in self.options:
+            key = f'{a}|{b}'
+            val = self.store.get(key)['value']
+            item = self.create_item(b, val, key)
             self.item_list.add_widget(item)
 
-        self.from_code = dialog_title
-
         self.dialog = MDDialog(
-            title=f'Transitions from: {dialog_title}',
+            title=f'From {a}, go to:',
             type='custom',
             content_cls=self.item_list,
             buttons=[
                 MDFlatButton(
-                    text="OK",
-                    text_color=self.theme_cls.primary_color,
+                    text="OK"
                 )
-            ]
+            ],
+            size_hint=[0.9, None],
         )
         self.dialog.buttons[0].on_press = self.dismiss_dialog
-
-        self.on_press = self.dialog.open
+        self.dialog.update_height()
+        self.dialog.open()
 
     def dismiss_dialog(self):
-        for item in self.item_list.children:
-            a = self.from_code
-            b = item.ids['check'].ids['name']
-            key = f'{a}|{b}'
-            if item.ids['check'].active:
-                print(key, 'SET')
-            else:
-                print(key, 'UNSET')
+        to_remove = self.item_list.children[:]
+        for item in to_remove:
+            key = item.ids['key']
+            self._set_value(key, item.ids['check'].active)
+            self.item_list.remove_widget(item)
+        self.dialog.title = ''
         self.dialog.dismiss()
 
     @staticmethod
-    def create_item(name):
-        item = OneLineAvatarIconListItem(text=name, divider=None)
-        check = CheckboxLeftWidget()
+    def create_item(name, active, key):
+        item = MDBoxLayout(
+            orientation='horizontal',
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            size_hint=(1.0, 1.0),
+            padding=(dp(0), dp(0))
+        )
+        lab = MDLabel(
+            text=name,
+            font_style='Body1',
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            size_hint=(1.0, 1.0),
+            halign='center',
+            valign='center',
+            theme_text_color='Custom',
+            text_color='#000000',
+            padding=(dp(0), dp(0)),
+        )
+        check = MDSwitch(
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            theme_thumb_color='Custom',
+            theme_thumb_down_color='Custom',
+            thumb_color_down='#4b77be'
+        )
+
+        def change_color(c):
+            c.ids['label'].text_color = '#4b77be' if c.active else '#000000'
+
+        check.on_release = lambda *x: change_color(check)
+        check.active = active
+        item.add_widget(lab)
         item.add_widget(check)
         check.ids['name'] = name
+        check.ids['key'] = key
         check.ids['item'] = item
+        check.ids['label'] = lab
+        item.ids['name'] = name
+        item.ids['key'] = key
         item.ids['check'] = check
+
+        change_color(check)
 
         return item
 
@@ -189,6 +300,7 @@ class ScrollScreen(ScrollView):
 
     def set_progress_bar(self, set_at):
         self.progress_bar.value = set_at
+
 
 class LabeledDropdown(MDGridLayout):
 
@@ -299,7 +411,10 @@ class DropdownTable(MDFloatLayout):
         )
         ddc = DropdownClass(
             menu_items=self.options,
-            pos_hint={'center_x': 0.5, 'center_y': 0.5}
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            text_color='#4b77be',
+            line_color='#4b77be',
+            theme_text_color="Custom"
         )
         value = self.store.get(label)[self.value_key]
         ddc.set_item(value)

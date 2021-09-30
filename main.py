@@ -9,10 +9,7 @@ from kivy.core.audio import SoundLoader
 from kivy.metrics import dp
 from kivy.storage.jsonstore import JsonStore
 
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Rectangle, Color
-from kivy.uix.image import Image
 
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
@@ -23,10 +20,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDSeparator
 
 from utils import clock_time_from_seconds
-from components import (
-    Tab, WrappedLabel, ImageCard, CheckboxTable, DropdownTable,
-    LabeledDropdown, ScrollScreen, CheckBoxDialog
-)
+from components import Tab, DropdownTable, LabeledDropdown, ScrollScreen, DialogTable
 from graphics import CircleWidget, RectangleWidget
 
 
@@ -45,10 +39,11 @@ class HistoricalFencingDrillsApp(MDApp):
         self.combo_expand_widget = None
         self.min_combo_length_widget = None
         self.max_combo_length_widget = None
-        self.cut_transitions = None
-        self.guard_transitions = None
+        self.transitions = None
         self.cut_box = None
         self.guard_box = None
+        self.cut_transitions_box = None
+        self.guard_transitions_box = None
 
         # placeholders for layouts
         self.screen3 = None
@@ -431,18 +426,16 @@ class HistoricalFencingDrillsApp(MDApp):
         for tab_label in (
                 'General',
                 'Weights',
-                'Cut Transitions',
-                'Guard Transitions'
+                'Transitions',
         ):
             tab = Tab(title=tab_label)
             if tab_label == 'General':
                 tab.add_widget(container)
             elif tab_label == 'Weights':
-
                 container = MDBoxLayout(orientation='vertical')
                 self.cut_box = DropdownTable(
                     items=self.cuts,
-                    options=[str(x) for x in range(11)],
+                    options=[str(x) for x in range(6)],
                     store=self.weights,
                     shape=(3, 3),
                     value_key='value',
@@ -451,7 +444,7 @@ class HistoricalFencingDrillsApp(MDApp):
                 self.cut_box.bind(calls=self.compile_weight_dict)
                 self.guard_box = DropdownTable(
                     items=self.guards,
-                    options=[str(x) for x in range(11)],
+                    options=[str(x) for x in range(6)],
                     store=self.weights,
                     shape=(3, 3),
                     value_key='value',
@@ -462,22 +455,29 @@ class HistoricalFencingDrillsApp(MDApp):
                 container.add_widget(MDSeparator())
                 container.add_widget(self.guard_box)
                 tab.add_widget(container)
-            elif tab_label == 'Cut Transitions':
-                self.cut_transitions = CheckboxTable(
-                    row_items=self.cuts + self.guards,
-                    col_items=self.cuts,
+            elif tab_label == 'Transitions':
+                container = MDBoxLayout(orientation='vertical')
+                self.cut_transitions_box = DialogTable(
+                    items=self.cuts,
+                    options=self.cuts + self.guards,
                     store=self.transitions,
+                    shape=(3, 3),
+                    value_key='value',
                     create_table=False
                 )
-                tab.add_widget(self.cut_transitions)
-            elif tab_label == 'Guard Transitions':
-                self.guard_transitions = CheckboxTable(
-                    row_items=self.cuts + self.guards,
-                    col_items=self.guards,
+
+                self.guard_transitions_box = DialogTable(
+                    items=self.guards,
+                    options=self.cuts + self.guards,
                     store=self.transitions,
+                    shape=(3, 3),
+                    value_key='value',
                     create_table=False
                 )
-                tab.add_widget(self.guard_transitions)
+                container.add_widget(self.cut_transitions_box)
+                container.add_widget(MDSeparator())
+                container.add_widget(self.guard_transitions_box)
+                tab.add_widget(container)
 
             self.settings_tabs.add_widget(tab)
         self._disable_tabs()
@@ -660,17 +660,17 @@ class HistoricalFencingDrillsApp(MDApp):
 
         self.current_settings_tab = tab_text
 
-        if tab_text == 'Cut Transitions':
-            if not self.cut_transitions.table_populated:
-                Clock.schedule_once(lambda dt: self.cut_transitions.append_table(), 0.5)
-        if tab_text == 'Guard Transitions':
-            if not self.guard_transitions.table_populated:
-                Clock.schedule_once(lambda dt: self.guard_transitions.append_table(), 0.5)
         if tab_text == 'Weights':
             if not self.cut_box.table_populated:
                 Clock.schedule_once(lambda dt: self.cut_box.append_table(), 0.5)
             if not self.guard_box.table_populated:
                 Clock.schedule_once(lambda dt: self.guard_box.append_table(), 0.5)
+
+        if tab_text == 'Transitions':
+            if not self.cut_transitions_box.table_populated:
+                Clock.schedule_once(lambda dt: self.cut_transitions_box.append_table(), 0.5)
+            if not self.guard_transitions_box.table_populated:
+                Clock.schedule_once(lambda dt: self.guard_transitions_box.append_table(), 0.5)
 
     def _switch_about_tabs(self, tabs, tab, label, tab_text):
 
