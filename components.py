@@ -20,6 +20,76 @@ from kivymd.uix.button import MDIconButton, MDRaisedButton
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.progressbar import MDProgressBar
 
+from kivymd.uix.button import MDFlatButton
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.list import OneLineAvatarIconListItem, CheckboxLeftWidget, MDList
+
+
+class CheckBoxDialog(MDFlatButton):
+
+    """
+    widget = CheckBoxDialog(
+        text='OPEN THIS',
+        dialog_title='rG',
+        item_names=['1', '2', '3'],
+        source=None
+    )
+    """
+
+    def __init__(
+        self,
+        dialog_title,
+        item_names,
+        source,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+
+        self.source = source
+        self. item_list = MDList()
+        for name in item_names:
+            item = self.create_item(name)
+            self.item_list.add_widget(item)
+
+        self.from_code = dialog_title
+
+        self.dialog = MDDialog(
+            title=f'Transitions from: {dialog_title}',
+            type='custom',
+            content_cls=self.item_list,
+            buttons=[
+                MDFlatButton(
+                    text="OK",
+                    text_color=self.theme_cls.primary_color,
+                )
+            ]
+        )
+        self.dialog.buttons[0].on_press = self.dismiss_dialog
+
+        self.on_press = self.dialog.open
+
+    def dismiss_dialog(self):
+        for item in self.item_list.children:
+            a = self.from_code
+            b = item.ids['check'].ids['name']
+            key = f'{a}|{b}'
+            if item.ids['check'].active:
+                print(key, 'SET')
+            else:
+                print(key, 'UNSET')
+        self.dialog.dismiss()
+
+    @staticmethod
+    def create_item(name):
+        item = OneLineAvatarIconListItem(text=name, divider=None)
+        check = CheckboxLeftWidget()
+        item.add_widget(check)
+        check.ids['name'] = name
+        check.ids['item'] = item
+        item.ids['check'] = check
+
+        return item
+
 
 class ScrollScreen(ScrollView):
 

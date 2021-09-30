@@ -25,7 +25,7 @@ from kivymd.uix.card import MDSeparator
 from utils import clock_time_from_seconds
 from components import (
     Tab, WrappedLabel, ImageCard, CheckboxTable, DropdownTable,
-    LabeledDropdown, ScrollScreen
+    LabeledDropdown, ScrollScreen, CheckBoxDialog
 )
 from graphics import CircleWidget, RectangleWidget
 
@@ -372,16 +372,18 @@ class HistoricalFencingDrillsApp(MDApp):
         container.add_widget(self.total_time_widget)
 
         pause_box = MDGridLayout(cols=2, rows=1, spacing=[dp(5), dp(0)])
+
         self.call_wait_widget = LabeledDropdown(
             label='Seconds after call:',
-            options=[str(x / 100) for x in range(5, 205, 5)],
+            options=['0.0', '0.1', '0.5', '1.0'],
             **kwargs
         )
+
         pause_box.add_widget(self.call_wait_widget)
 
         self.combo_wait_widget = LabeledDropdown(
             label='Seconds after combo:',
-            options=[str(x / 100) for x in range(5, 205, 5)],
+            options=['0.1', '0.5', '1.0', '2.0'],
             **kwargs
         )
         pause_box.add_widget(self.combo_wait_widget)
@@ -743,5 +745,5 @@ class HistoricalFencingDrillsApp(MDApp):
 
 if __name__ == '__main__':
 
-    # Window.size = (720 / 2, 1280 / 2)
+    Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
