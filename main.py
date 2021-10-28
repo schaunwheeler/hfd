@@ -120,8 +120,8 @@ class HistoricalFencingDrillsApp(MDApp):
         min_size = int(self.min_combo_length_widget.widget.text)
         max_size = int(self.max_combo_length_widget.widget.text)
 
-        manual_options = ('Manual', )
-        if self.mode_widget.widget.text in manual_options:
+        randomized = ('Random', 'Return to Guard')
+        if self.mode_widget.widget.text in randomized:
             transitions_dict = dict()
             for t, v in self.transitions.find():
                 if not v['value']:
@@ -142,17 +142,33 @@ class HistoricalFencingDrillsApp(MDApp):
 
                 return random.choices(options, weights=weights)[0]
 
-            def generator_function():
-                call = draw_from_options(transitions_set)
-                while True:
-                    combo_length = random.randrange(min_size, max_size + 1)
-                    call = draw_from_options(transitions_dict[call])
-                    combo = [call]
-                    while len(combo) < combo_length:
+            if self.mode_widget.widget.text == 'Random':
+                def generator_function():
+                    call = draw_from_options(transitions_set)
+                    while True:
+                        combo_length = random.randrange(min_size, max_size + 1)
                         call = draw_from_options(transitions_dict[call])
-                        combo.append(call)
+                        combo = [call]
+                        while len(combo) < combo_length:
+                            call = draw_from_options(transitions_dict[call])
+                            combo.append(call)
 
-                    yield combo
+                        yield combo
+            elif self.mode_widget.widget.text == 'Return to Guard':
+                def generator_function():
+                    while True:
+                        combo_length = random.randrange(min_size, max_size + 1)
+                        call = draw_from_options(self.guards)
+                        combo = [call]
+                        while len(combo) < combo_length:
+                            if (combo_length - len(combo)) == 1:
+                                options = [c for c in transitions_dict[call] if c in self.guards]
+                            else:
+                                options = [c for c in transitions_dict[call] if c in self.cuts]
+                            call = draw_from_options(options)
+                            combo.append(call)
+
+                        yield combo
 
         elif self.mode_widget.widget.text == 'Pre-programmed':
             with open('assets/combos.txt', 'r') as f:
@@ -172,7 +188,9 @@ class HistoricalFencingDrillsApp(MDApp):
             def generator_function():
                 yield random.choice(patterns)
         else:
-            raise ValueError('Valid values are `Pre-programmed` and `Custom`.')
+            raise ValueError(
+                'Valid values are `Pre-programmed`, `Random`, and `Return to Guard`.'
+            )
 
         return generator_function
 
@@ -320,7 +338,7 @@ class HistoricalFencingDrillsApp(MDApp):
         kwargs = dict(
             store=self.settings,
             value_key='value',
-            width_mult=2,
+            width_mult=100,
             cols=1
         )
 
@@ -334,7 +352,8 @@ class HistoricalFencingDrillsApp(MDApp):
             label='Mode:',
             options=[
                 'Pre-programmed',
-                'Manual'
+                'Random',
+                'Return to Guard'
             ],
             size_hint=(0.8, 1.0),
             pos_hint={'center_x': .4, 'center_y': 0.5},
@@ -342,6 +361,7 @@ class HistoricalFencingDrillsApp(MDApp):
         )
         self.mode_widget.widget.bind(text=self.validate_values)
         mode_box.add_widget(self.mode_widget)
+        kwargs['width_mult'] = 2
 
         self.pct_widget = LabeledDropdown(
             label='% cuts:',
@@ -698,14 +718,18 @@ class HistoricalFencingDrillsApp(MDApp):
                 self.weight_dict[k] = v * (1.0 - cut_pct)
 
     def _disable_tabs(self):
-        manual_options = ('Manual', )
+        manual_options = ('Random', 'Return to Guard')
         flag = self.mode_widget.widget.text not in manual_options
         for tab in self.settings_tabs.get_slides():
             if tab.title != 'General':
                 tab.tab_label.disabled_color = [0.0, 0.0, 0.0, 0.1]
                 tab.tab_label.disabled = flag
                 tab.disabled = flag
-        self.pct_widget.widget.disabled = flag
+
+        if self.mode_widget.widget.text == 'Random':
+            self.pct_widget.widget.disabled = False
+        else:
+            self.pct_widget.widget.disabled = True
 
     def validate_values(self, widget, text):
 
@@ -745,5 +769,5 @@ class HistoricalFencingDrillsApp(MDApp):
 
 if __name__ == '__main__':
 
-    Window.size = (720 / 2, 1280 / 2)
+    # Window.size = (720 / 2, 1280 / 2)
     HistoricalFencingDrillsApp().run()
